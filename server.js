@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT 
 CREATE TABLE IF NOT EXISTS visits(day TEXT, tg_id TEXT, PRIMARY KEY(day, tg_id));
 CREATE TABLE IF NOT EXISTS users(tg_id TEXT PRIMARY KEY, name TEXT, first_seen TEXT DEFAULT (datetime('now')), last_seen TEXT DEFAULT (datetime('now')), blocked INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS subject_requests(id TEXT PRIMARY KEY, created_at TEXT DEFAULT (datetime('now')), tg_id TEXT, who TEXT, subject TEXT, note TEXT DEFAULT '');
+CREATE TABLE IF NOT EXISTS tutor_edits(id TEXT PRIMARY KEY, created_at TEXT DEFAULT (datetime('now')), tutor_id TEXT UNIQUE REFERENCES tutors(id) ON DELETE CASCADE, tg_id TEXT, changes TEXT);
 CREATE INDEX IF NOT EXISTS ev_idx ON events(type, ts);
 `);
 const UPLOAD_DIR = path.join(path.dirname(DB_PATH), 'uploads');
@@ -277,26 +278,64 @@ const myTutor = ctx => {
   if (!t) throw new HttpError(403, 'هذا الحساب غير مرتبط بخصوصي');
   return t;
 };
-function savePhoto(tutorId, dataUrl) {
+function decodePhoto(dataUrl) {
   const m = String(dataUrl || '').match(/^data:image\/(?:jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
   if (!m) throw bad('صورة غير صالحة');
   const buf = Buffer.from(m[1], 'base64');
   if (buf.length > 250_000) throw bad('حجم الصورة كبير');
   if (!(buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff)) throw bad('الصيغة المسموحة JPG فقط');
+  return buf;
+}
+function savePhoto(tutorId, dataUrl) {
+  const buf = decodePhoto(dataUrl);
   fs.writeFileSync(path.join(UPLOAD_DIR, tutorId + '.jpg'), buf);
   const v = Date.now().toString(36);
   run('UPDATE tutors SET photo=? WHERE id=?', v, tutorId);
   return v;
 }
+
+/* ---------- تعديلات الخصوصي تحتاج موافقة الإدارة ---------- */
+const normSubs = j => { try { return JSON.stringify((typeof j === 'string' ? JSON.parse(j) : j).map(s => ({ name: s.name, targets: s.targets, price: String(s.price ?? ''), trial: s.trial || '' }))); } catch { return ''; } };
+const subjLine = s => `   - ${s.name} | ${s.price} ريال | ${s.targets}${s.trial ? ' | ' + s.trial : ''}`;
+function describeEdit(t, ch) {
+  const out = [];
+  if ('whatsapp' in ch) out.push(`• الواتساب: ${t.whatsapp} ← ${ch.whatsapp}`);
+  if ('telegram' in ch) out.push(`• التليجرام: ${t.telegram} ← ${ch.telegram}`);
+  if ('bio' in ch) out.push(`• النبذة: ${t.bio || '—'} ← ${ch.bio || '—'}`);
+  if ('subjects' in ch) {
+    out.push('• المواد قبل التعديل:'); JSON.parse(t.subjects || '[]').forEach(x => out.push(subjLine(x)));
+    out.push('• المواد بعد التعديل:'); JSON.parse(ch.subjects).forEach(x => out.push(subjLine(x)));
+  }
+  if (ch.photo) out.push('• صورة شخصية جديدة');
+  return out.join('\n').slice(0, 3500);
+}
+function submitEdit(t, tgId, ch) {
+  const pend = get('SELECT * FROM tutor_edits WHERE tutor_id=?', t.id);
+  if (!Object.keys(ch).length) { if (pend) run('DELETE FROM tutor_edits WHERE id=?', pend.id); return false; }
+  if (pend) run(`UPDATE tutor_edits SET changes=?,created_at=datetime('now') WHERE id=?`, JSON.stringify(ch), pend.id);
+  else run('INSERT INTO tutor_edits(id,tutor_id,tg_id,changes) VALUES(?,?,?,?)', uuid(), t.id, tgId, JSON.stringify(ch));
+  for (const a of ADMIN_IDS) notify(a, `✏️ طلب تعديل بيانات من الخصوصي ${t.name}\n\n${describeEdit(t, ch)}\n\nراجعه من لوحة الإدارة ← تعديلات الخصوصيين`);
+  return true;
+}
+const pendingOf = tutorId => { const e = get('SELECT * FROM tutor_edits WHERE tutor_id=?', tutorId); return e ? JSON.parse(e.changes) : null; };
 route('PUT', '/api/me/tutor', ctx => {
   const t = myTutor(ctx), b = ctx.body, cur = parseSubjects(t);
-  const clean = cleanTutor({ ...cur, whatsapp: b.whatsapp ?? cur.whatsapp, telegram: b.telegram ?? cur.telegram, subjects: b.subjects ?? cur.subjects });
   const availability = ['available', 'full'].includes(b.availability) ? b.availability : t.availability;
-  run('UPDATE tutors SET whatsapp=?,telegram=?,subjects=?,availability=?,bio=? WHERE id=?',
-    clean.whatsapp, clean.telegram, clean.subjects, availability, str(b.bio ?? t.bio, 300), t.id);
-  return { ok: true };
+  if (availability !== t.availability) run('UPDATE tutors SET availability=? WHERE id=?', availability, t.id);   // حالة التوفر فورية
+  const clean = cleanTutor({ ...cur, whatsapp: b.whatsapp ?? cur.whatsapp, telegram: b.telegram ?? cur.telegram, subjects: b.subjects ?? cur.subjects });
+  const bio = str(b.bio ?? t.bio, 300), ch = {};
+  if (clean.whatsapp !== t.whatsapp) ch.whatsapp = clean.whatsapp;
+  if (clean.telegram !== t.telegram) ch.telegram = clean.telegram;
+  if (normSubs(clean.subjects) !== normSubs(t.subjects)) ch.subjects = clean.subjects;
+  if (bio !== (t.bio || '')) ch.bio = bio;
+  const old = pendingOf(t.id); if (old && old.photo) ch.photo = old.photo;     // لا نضيّع صورة معلّقة
+  return { ok: true, pending: submitEdit(t, ctx.user.id, ch) };
 });
-route('POST', '/api/me/tutor/photo', ctx => { const t = myTutor(ctx); savePhoto(t.id, ctx.body.image); return { ok: true }; });
+route('POST', '/api/me/tutor/photo', ctx => {
+  const t = myTutor(ctx); decodePhoto(ctx.body.image);
+  const ch = pendingOf(t.id) || {}; ch.photo = ctx.body.image;
+  submitEdit(t, ctx.user.id, ch); return { ok: true, pending: true };
+});
 route('POST', '/api/me/replies', ctx => {
   const t = myTutor(ctx), r = get('SELECT * FROM ratings WHERE id=? AND tutor_id=?', String(ctx.body.rating_id || ''), t.id);
   if (!r) throw new HttpError(404, 'التقييم غير موجود');
@@ -309,7 +348,9 @@ route('GET', '/api/me/stats', ctx => {
   const t = myTutor(ctx), ev = type => get(`SELECT COUNT(*) c FROM events WHERE tutor_id=? AND type=? AND ts>=datetime('now','-30 days')`, t.id, type).c;
   const r = get(`SELECT COUNT(*) n, AVG(score) a, SUM(CASE WHEN COALESCE(reply,'')='' THEN 1 ELSE 0 END) unreplied FROM ratings WHERE tutor_id=?`, t.id);
   return { wa: ev('wa'), tg: ev('tg'), trial: ev('trial'), share: ev('share'), favorites: get('SELECT COUNT(*) c FROM favorites WHERE tutor_id=?', t.id).c,
-    ratings: r.n, avg: r.n ? Math.round(r.a) : null, unreplied: r.unreplied || 0, warnings: t.warnings || 0, badges: computeBadges()[t.id] || [], bio: t.bio || '' };
+    ratings: r.n, avg: r.n ? Math.round(r.a) : null, unreplied: r.unreplied || 0, warnings: t.warnings || 0, badges: computeBadges()[t.id] || [], bio: t.bio || '',
+    pendingEdit: (() => { const c = pendingOf(t.id); if (!c) return null; const e = get('SELECT created_at FROM tutor_edits WHERE tutor_id=?', t.id);
+      return { created_at: e.created_at, fields: Object.keys(c), hasPhoto: !!c.photo, changes: { ...c, photo: undefined, subjects: c.subjects ? JSON.parse(c.subjects) : undefined } }; })() };
 });
 
 /* ---------- الإدارة ---------- */
@@ -322,6 +363,11 @@ route('GET', '/api/admin/data', ctx => {
     tutors: all('SELECT * FROM tutors ORDER BY created_at').map(adminTutor),
     reports: all(`SELECT p.id,p.created_at,p.who,p.kind,p.tutor_id,p.rating_id,p.reason,t.name tutor_name,r.comment,r.who rater,r.score
                   FROM reports p LEFT JOIN tutors t ON t.id=p.tutor_id LEFT JOIN ratings r ON r.id=p.rating_id WHERE p.status='open' ORDER BY p.created_at`),
+    tutorEdits: all(`SELECT e.id,e.created_at,e.tutor_id,e.changes,t.name,t.whatsapp,t.telegram,t.subjects,t.bio,t.photo FROM tutor_edits e JOIN tutors t ON t.id=e.tutor_id ORDER BY e.created_at`).map(r => {
+      const c = JSON.parse(r.changes); if (c.subjects) c.subjects = JSON.parse(c.subjects);
+      return { id: r.id, created_at: r.created_at, tutor_id: r.tutor_id, name: r.name, changes: c,
+        before: { whatsapp: r.whatsapp, telegram: r.telegram, subjects: JSON.parse(r.subjects || '[]'), bio: r.bio || '', photo: r.photo ? `/uploads/${r.tutor_id}.jpg?v=${r.photo}` : '' } };
+    }),
     subjectRequests: all(`SELECT MIN(subject) subject, COUNT(*) n, MAX(created_at) last FROM subject_requests GROUP BY LOWER(TRIM(subject)) ORDER BY n DESC, last DESC`)
   };
 });
@@ -389,7 +435,29 @@ route('DELETE', '/api/admin/terms/:id', ctx => { needAdmin(ctx); run('DELETE FRO
 route('GET', '/api/admin/backup', ctx => {
   needAdmin(ctx);
   return { exported_at: new Date().toISOString(), tutors: all('SELECT * FROM tutors').map(parseSubjects), requests: all('SELECT * FROM requests').map(parseSubjects),
-    ratings: all('SELECT * FROM ratings'), rating_edits: all('SELECT * FROM rating_edits'), terms: all('SELECT * FROM terms'), favorites: all('SELECT * FROM favorites'), subject_requests: all('SELECT * FROM subject_requests') };
+    ratings: all('SELECT * FROM ratings'), rating_edits: all('SELECT * FROM rating_edits'), terms: all('SELECT * FROM terms'), favorites: all('SELECT * FROM favorites'), tutor_edits: all('SELECT * FROM tutor_edits'), subject_requests: all('SELECT * FROM subject_requests') };
+});
+route('POST', '/api/admin/tutor-edits/:id/approve', ctx => {
+  needAdmin(ctx);
+  const e = get('SELECT * FROM tutor_edits WHERE id=?', ctx.params.id); if (!e) throw new HttpError(404, 'الطلب غير موجود');
+  const ch = JSON.parse(e.changes);
+  tx(() => {
+    const sets = [], vals = [];
+    for (const k of ['whatsapp', 'telegram', 'subjects', 'bio']) if (k in ch) { sets.push(k + '=?'); vals.push(ch[k]); }
+    if (sets.length) run(`UPDATE tutors SET ${sets.join(',')} WHERE id=?`, ...vals, e.tutor_id);
+    if (ch.photo) savePhoto(e.tutor_id, ch.photo);
+    run('DELETE FROM tutor_edits WHERE id=?', e.id);
+  });
+  notify(e.tg_id, '✅ تمت الموافقة على تعديلاتك وتم تطبيقها على حسابك.');
+  return { ok: true };
+});
+route('POST', '/api/admin/tutor-edits/:id/reject', ctx => {
+  needAdmin(ctx);
+  const e = get('SELECT * FROM tutor_edits WHERE id=?', ctx.params.id); if (!e) throw new HttpError(404, 'الطلب غير موجود');
+  const reason = str(ctx.body.reason, 300);
+  run('DELETE FROM tutor_edits WHERE id=?', e.id);
+  notify(e.tg_id, '❌ لم تتم الموافقة على تعديلاتك.' + (reason ? '\nالسبب: ' + reason : ''));
+  return { ok: true };
 });
 route('POST', '/api/admin/reports/:id/resolve', ctx => {
   needAdmin(ctx);
@@ -513,3 +581,4 @@ setTimeout(backup, 10_000).unref();
 setInterval(backup, 6 * 3600_000).unref();
 
 server.listen(PORT, () => console.log(`✅ المنصة تعمل على المنفذ ${PORT}`));
+
