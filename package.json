@@ -1,0 +1,8 @@
+{
+  "name": "barq-tutors-platform",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=22.13" },
+  "scripts": { "start": "node --disable-warning=ExperimentalWarning server.js" }
+}
