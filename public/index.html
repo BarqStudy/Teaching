@@ -8,7 +8,6 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>tailwind.config={darkMode:'class'}</script>
 <style>
 body{font-family:'Cairo',sans-serif;overflow:hidden;height:100dvh}
@@ -35,11 +34,15 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;filter:blur(40px);back
 .btn{padding:.7rem;border-radius:.9rem;font-weight:700;font-size:.75rem;color:#fff;text-align:center;display:block;width:100%}
 .inp option{color:#000}
 .hidden{display:none!important}
+[dir=ltr] .text-right{text-align:left}
+[dir=ltr] .fa-arrow-right,[dir=ltr] svg.fa-arrow-right{transform:scaleX(-1)}
+.overflow-x-auto{scrollbar-width:none}.overflow-x-auto::-webkit-scrollbar{display:none}
 </style>
 </head>
 <body class="bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100">
 
 <button onclick="toggleTheme()" class="absolute top-4 left-4 z-50 ibtn"><i class="fa-solid fa-circle-half-stroke"></i></button>
+<button onclick="toggleLang()" id="langBtn" class="absolute top-4 left-16 z-50 ibtn text-xs font-black" style="color:#fff">EN</button>
 
 <!-- الرئيسية -->
 <div id="page-home" class="page"><div class="scroll">
@@ -73,7 +76,10 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;filter:blur(40px);back
 <!-- قائمة الخصوصيين -->
 <div id="page-list" class="page hidden"><div class="scroll">
   <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="fa-solid fa-arrow-right"></i></button><h2 class="text-lg font-bold">الخصوصيين</h2></div>
+  <div id="listFilters" class="space-y-2"></div>
+  <p id="listCount" class="text-[11px] text-slate-400"></p>
   <div id="listBox" class="space-y-2"></div>
+  <button onclick="askSubject()" class="glass p-3 rounded-2xl text-xs font-bold text-center text-blue-500">ما لقيت مادتك؟ اطلبها</button>
 </div></div>
 
 <!-- التسجيل كخصوصي -->
@@ -86,6 +92,12 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;filter:blur(40px);back
 <div id="page-rate" class="page hidden"><div class="scroll">
   <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="fa-solid fa-arrow-right"></i></button><div><h2 class="text-lg font-bold">التقييمات</h2><p class="text-[11px] text-slate-400">اضغط على أي خصوصي لمشاهدة تقييمات الطلاب أو إضافة تقييمك</p></div></div>
   <div id="rateBox" class="space-y-2"></div>
+</div></div>
+
+<!-- حساب الخصوصي -->
+<div id="page-me" class="page hidden"><div class="scroll">
+  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="fa-solid fa-arrow-right"></i></button><h2 class="text-lg font-bold">حسابي كخصوصي</h2></div>
+  <div id="meBox" class="glass p-4 rounded-2xl space-y-3"></div>
 </div></div>
 
 <!-- المطور -->
@@ -110,20 +122,25 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;filter:blur(40px);back
   <div id="adminBody" class="glass p-4 rounded-2xl space-y-3"></div>
 </div></div>
 
+<!-- نافذة إدخال نص -->
+<div id="ask" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] hidden items-center justify-center p-4"><div class="glass tcard w-full max-w-sm rounded-3xl p-5 space-y-3">
+  <h3 id="askT" class="font-black text-sm"></h3><textarea id="askIn" rows="3" maxlength="400" class="inp"></textarea>
+  <div class="grid grid-cols-2 gap-2"><button id="askOk" class="btn bg-blue-500">إرسال</button><button id="askNo" class="btn bg-slate-500">إلغاء</button></div></div></div>
+
 <!-- نافذة بطاقة الخصوصي -->
 <div id="overlay" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] hidden items-center justify-center p-4" onclick="if(event.target===this)closeCard()"><div id="card" class="w-full max-w-sm max-h-[92vh] overflow-y-auto"></div></div>
 
 <nav class="fixed bottom-4 left-4 right-4 max-w-md mx-auto glass p-2.5 flex justify-around z-40 rounded-3xl">
   <button onclick="go('home')" id="nav-home" class="nv on flex flex-col items-center gap-1 p-2 text-blue-500"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-house"></i></span><span class="text-[10px] font-bold">الرئيسية</span></button>
   <button onclick="go('rate')" id="nav-rate" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-star"></i></span><span class="text-[10px] font-bold">التقييمات</span></button>
+  <button onclick="go('me')" id="nav-me" style="display:none" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-user-graduate"></i></span><span class="text-[10px] font-bold">حسابي</span></button>
   <button onclick="go('admin')" id="nav-admin" style="display:none" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-gear"></i></span><span class="text-[10px] font-bold">الإدارة</span></button>
 </nav>
 
 <script>
 /* ===== الإعدادات ===== */
-const OWNER_ID="6762978079";            // آيدي تليجرام الخاص بك (الأدمن)
+// الأدمن يُحدَّد من الخادم (آيدي تليجرام في ملف .env) ولا يوجد أي مفتاح سري هنا
 const DEV_TG="https://t.me/Roman_1ME";  // رابط تواصل المطور
-
 
 const tg=window.Telegram&&Telegram.WebApp; if(tg){try{tg.ready();tg.expand()}catch(e){}}
 const tu=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;
@@ -131,24 +148,123 @@ const lsGet=(k,f)=>{try{return localStorage[k]||(localStorage[k]=f())}catch(e){r
 const guestNo=lsGet('gno',()=>String(Math.floor(100000+Math.random()*900000)));
 const me={id:tu?String(tu.id):lsGet('gid',()=>'g'+Math.random().toString(36).slice(2,10)),name:tu?((tu.first_name||'')+' '+(tu.last_name||'')).trim():'زائرنا الكريم',
   // يوزر تليجرام، وإن لم يوجد فالـ ID، وإن لم يوجد (خارج تليجرام) user_رقم
-  handle:tu?(tu.username?'@'+tu.username:String(tu.id)):'user_'+guestNo};
-const isAdmin=me.id===OWNER_ID||location.hash==='#admin';
+  handle:tu?(tu.username?'@'+tu.username:String(tu.id)):'user_'+guestNo,authed:false,tutorId:null};
+let isAdmin=false,curPage='home';
 
-/* ===== البيانات (محفوظة في المتصفح + نسخة احتياطية JSON) ===== */
-const SUPABASE_URL="https://wyqodyjycvnxjgudvtim.supabase.co",SUPABASE_KEY="sb_publishable_e0LnxAnEFQbStSJhCZzezw_oto0V7yS";   // ← ضع بيانات مشروعك من Supabase
-const sb=(window.supabase&&SUPABASE_URL)?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
-let db={tutors:[],requests:[],terms:[],ratings:{},edits:[]},session=null;
-async function loadAll(){
-  if(!sb)return;
-  const [t,tm,r]=await Promise.all([sb.from('tutors').select('*').order('created_at'),sb.from('terms').select('*').order('sort'),sb.from('ratings').select('*')]);
-  db.tutors=t.data||[];db.terms=tm.data||[];db.ratings={};
-  (r.data||[]).forEach(x=>(db.ratings[x.tutor_id]=db.ratings[x.tutor_id]||[]).push({uid:x.tg_id,who:x.who,score:x.score,text:x.comment,explain:x.explain,style:x.style,coop:x.coop,at:x.created_at}));
-  db.edits=[];if(session){const q=await sb.from('requests').select('*').order('created_at');db.requests=q.data||[];const e=await sb.from('rating_edits').select('*').order('created_at');db.edits=e.data||[]}
+/* ===== اللغة (عربي / English) ===== */
+let LANG='ar';try{LANG=localStorage.lang==='en'?'en':'ar'}catch(e){}
+const EN={
+'أهلاً بك':'Welcome','زائرنا الكريم':'Guest','عدد المواد المشروحة':'Subjects taught','مواد يشرحها خصوصيونا حالياً':'Subjects our tutors currently teach',
+'ابحث عن خصوصي أو مادة...':'Search for a tutor or subject...','الخصوصيين':'Tutors','تصفّح جميع الخصوصيين المعتمدين':'Browse all approved tutors',
+'طلب التسجيل كخصوصي':'Apply as a tutor','سجّل بياناتك وموادك وأسعارك':'Register your details, subjects and prices','التقييمات':'Reviews',
+'شاهد آراء الطلاب وقيّم خصوصيك':'See student reviews and rate your tutor','المطور':'Developer','معلومات وتفاصيل المطور':'About the developer',
+'لا توجد نتائج':'No results','لا توجد نتائج مطابقة':'No matching results','لا يوجد خصوصيون حالياً':'No tutors yet','الرئيسية':'Home','الإدارة':'Admin','حسابي':'My account',
+'عن المنصة والمطور':'About the platform & developer','منصة':'The','تربط الطلاب بمدرسين خصوصيين معتمدين لشرح المواد حضورياً أو عن بعد.':'platform connects students with approved private tutors for in-person or online lessons.','تواصل مع المطور':'Contact the developer',
+'ابحث بالاسم أو المادة أو الجامعة':'Search by name, subject or university','الأعلى تقييماً':'Top rated','الأرخص':'Cheapest','الموثقون أولاً':'Verified first','متاح فقط':'Available only','المفضلة':'Favorites','موثق فقط':'Verified only','تقييم 70+':'Rating 70+','تقييم 85+':'Rating 85+','كل المواد':'All subjects','أعلى سعر للترم':'Max price per term',
+'ما لقيت مادتك؟ اطلبها':"Can't find your subject? Request it",'اطلب مادة':'Request a subject','اكتب اسم المادة المطلوبة':'Type the requested subject','إرسال':'Send','إلغاء':'Cancel','تم إرسال طلب المادة، شكراً لك':'Your subject request was sent, thank you',
+'سعر الشرح للترم':'Price per term','سعر الشرح للترم كامل':'Full-term price','واتساب':'WhatsApp','تليجرام':'Telegram','شرح تجريبي':'Free trial lesson','إغلاق':'Close','مشاركة':'Share','إبلاغ':'Report',
+'ممتلئ هذا الترم':'Full this term','متاح':'Available','متفاعل مع الطلاب':'Engaged with students','الأكثر طلباً':'Most requested','جديد':'New','من 100':'out of 100','ر.س':'SAR','ذكر':'Male','أنثى':'Female',
+'هذا الخصوصي ممتلئ حالياً، تقدر تتواصل معه وتسأل عن توفر مقعد.':'This tutor is currently full. You can still contact them to ask about availability.',
+'اكتب سبب البلاغ':'Write the reason for your report','إبلاغ عن الخصوصي':'Report this tutor','تم إرسال بلاغك للإدارة':'Your report was sent to the admins','تم نسخ الرابط':'Link copied',
+'اضغط على أي خصوصي لمشاهدة تقييمات الطلاب أو إضافة تقييمك':'Tap a tutor to see student reviews or add yours','الشرح':'Explanation','الأسلوب':'Style','التعاون':'Cooperation',
+'لا توجد تقييمات بعد':'No reviews yet','قيّم هذا الخصوصي':'Rate this tutor','تعليقك (اختياري)':'Your comment (optional)','إرسال التقييم':'Submit rating','آراء الطلاب':'Student reviews','كن أول من يقيّم':'Be the first to review',
+'لا يمكن تعديل التقييم مباشرة. أرسل طلباً للإدارة وسيتم فتح التقييم لك بعد الموافقة.':"Ratings can't be edited directly. Send a request to the admins and your rating will be reopened once approved.",
+'سبب طلب التعديل (اختياري)':'Reason for the edit request (optional)','طلب تعديل التقييم':'Request a rating edit','رد الخصوصي:':'Tutor reply:','رد على التقييم':'Reply','تعديل الرد':'Edit reply','لا يوجد خصوصيون للتقييم':'No tutors to rate','اكتب ردك':'Write your reply','إبلاغ عن تقييم':'Report this review',
+'شكراً لتقييمك':'Thanks for your rating','تم إرسال طلبك للإدارة':'Your request was sent to the admins','تم إرسال طلبك للإدارة، سيتم التواصل معك':'Your request was sent to the admins, we will contact you','افتح المنصة من داخل تليجرام أولاً':'Please open the platform from inside Telegram',
+'التسجيل كخصوصي':'Register as a tutor','تُرسل بياناتك للإدارة للمراجعة':'Your details will be sent to the admins for review','البيانات الشخصية':'Personal details','بيانات التواصل':'Contact details','بيانات المواد':'Subjects','التعهد':'Pledge',
+'الاسم (ثنائي أو ثلاثي)':'Full name (2 or 3 names)','الجنسية (اضغط واختر أو اكتب)':'Nationality (tap to choose or type)','العمر':'Age','الجنس':'Gender','رابط تجريبي لكل مادة':'Trial link per subject','رابط واحد لكل المواد':'One trial link for all subjects','رابط الشرح التجريبي (لكل المواد)':'Trial lesson link (all subjects)',
+'اسم المادة (مثال: ميكانيكا المواد)':'Subject name (e.g. Mechanics of Materials)','الطلاب المستهدفين (مثال: طلاب الهندسة الميكانيكية والمدنية)':'Target students (e.g. Mechanical & Civil Engineering students)','سعر الشرح للمادة خلال الترم كامل':'Price for the full term','رابط الشرح التجريبي لهذه المادة':'Trial lesson link for this subject','+ إضافة مادة':'+ Add a subject',
+'أتعهد أنا الخصوصي':'I, the tutor,','بأن ألتزم بجميع الشروط الموضحة وهي:':'pledge to abide by all the following terms:','(اسمك)':'(your name)',
+'🔹 يجب مراعاة الطلاب والرد على استفساراتهم وعدم إهمالهم.':'🔹 Be considerate to students and answer their questions; never neglect them.','🔹 في حال وجود شكوى صحيحة يأخذ الخصوصي إنذار، وعند الوصول لـ 3 إنذارات يُلغى من قائمة الخصوصيين.':'🔹 A valid complaint results in a warning; after 3 warnings the tutor is removed from the list.',
+'هل تتعهد بالالتزام بهذه القوانين؟':'Do you pledge to follow these rules?','موافق':'I agree','لا':'No',
+'حسابي كخصوصي':'My tutor account','تغيير الصورة':'Change photo','إحصائيات آخر 30 يوم':'Last 30 days','نقرات واتساب':'WhatsApp clicks','نقرات تليجرام':'Telegram clicks','فتح الشرح التجريبي':'Trial lesson opens','أضافوك للمفضلة':'Added you to favorites','متوسط التقييم':'Average rating','عدد التقييمات':'Number of reviews','تقييمات بدون رد':'Unreplied reviews','الإنذارات':'Warnings',
+'حالة التوفر':'Availability','متاح للطلاب':'Open to students','ممتلئ':'Full','نبذة عنك (اختياري)':'About you (optional)','حفظ التغييرات':'Save changes','عرض تقييماتي والرد عليها':'View and reply to my reviews','تم حفظ التغييرات':'Changes saved','شاراتك':'Your badges','لا يوجد حساب خصوصي مرتبط بك':'No tutor account is linked to you'
+};
+const PATS=[[/^(\d+) سنة$/,'$1 yrs'],[/^بناءً على (\d+) تقييم$/,'Based on $1 reviews'],[/^من (\d+) إلى (\d+) (.+)$/,'$1 – $2 $3'],[/^سبق أن قيّمت هذا الخصوصي \((\d+)\/100\)$/,'You already rated this tutor ($1/100)'],[/^(\d+) خصوصي$/,'$1 tutors'],[/^الإنذارات: (\d+)\/3$/,'Warnings: $1/3']];
+function trStr(s){
+  if(LANG!=='en')return s;const k=String(s).trim();if(!k)return s;
+  if(EN[k]!==undefined)return String(s).replace(k,EN[k]);
+  for(const[re,to]of PATS)if(re.test(k))return String(s).replace(k,k.replace(re,to));
+  return s;
 }
-async function run(p){if(!sb){alert('لم يتم ربط قاعدة البيانات');return false}const{error}=await p;if(error){alert('خطأ: '+error.message);return false}return true}
+const tOrig=new WeakMap();
+function trNode(n){
+  const cur=n.nodeValue,saved=tOrig.get(n);
+  if(LANG==='en'){
+    if(saved&&cur===saved.tr)return;
+    const v=trStr(cur);if(v!==cur){tOrig.set(n,{o:cur,tr:v});n.nodeValue=v}else if(saved)tOrig.delete(n);
+  }else if(saved&&cur===saved.tr){n.nodeValue=saved.o;tOrig.delete(n)}
+}
+function trAttrs(el){
+  for(const a of['placeholder','title']){
+    if(!el.hasAttribute||!el.hasAttribute(a))continue;
+    const key='__o_'+a,cur=el.getAttribute(a),saved=el[key];
+    if(LANG==='en'){
+      if(saved&&cur===saved.tr)continue;
+      const v=trStr(cur);if(v!==cur){el[key]={o:cur,tr:v};el.setAttribute(a,v)}else if(saved)delete el[key];
+    }else if(saved&&cur===saved.tr){el.setAttribute(a,saved.o);delete el[key]}
+  }
+}
+function trTree(r){
+  if(r.nodeType===3)return trNode(r);
+  if(r.nodeType!==1||r.tagName==='SCRIPT'||r.tagName==='STYLE')return;
+  trAttrs(r);r.childNodes.forEach(trTree);
+}
+new MutationObserver(ms=>{for(const m of ms){
+  if(m.type==='childList')m.addedNodes.forEach(trTree);
+  else if(m.type==='characterData')trNode(m.target);
+  else if(m.type==='attributes')trAttrs(m.target);
+}}).observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['placeholder','title']});
+function setLang(l){
+  LANG=l;try{localStorage.lang=l}catch(e){}
+  document.documentElement.lang=l;document.documentElement.dir=l==='en'?'ltr':'rtl';
+  const b=document.getElementById('langBtn');if(b)b.textContent=l==='en'?'ع':'EN';
+  trTree(document.body);
+}
+const _alert=window.alert.bind(window);window.alert=m=>_alert(trStr(String(m)));
+function toggleLang(){setLang(LANG==='en'?'ar':'en')}
+
+/* ===== الاتصال بالخادم ===== */
+let db={tutors:[],requests:[],terms:[],ratings:{},edits:[],adminTutors:[],reports:[],subjReqs:[]},CFG={appLink:''},FAV=new Set();
+async function api(method,url,body){
+  const r=await fetch('/api'+url,{method,headers:{'Content-Type':'application/json','X-Tg-Init':(tg&&tg.initData)||''},body:body===undefined?undefined:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){const e=new Error(j.error||'خطأ في الاتصال');e.status=r.status;e.code=j.code;throw e}
+  return j;
+}
+async function loadAll(){
+  try{
+    const d=await api('GET','/bootstrap');
+    isAdmin=d.me.isAdmin;me.authed=d.me.authed;me.tutorId=d.me.tutorId;FAV=new Set(d.me.favorites||[]);CFG=d.config||CFG;
+    db.tutors=d.tutors;db.terms=d.terms;db.ratings={};
+    d.ratings.forEach(x=>(db.ratings[x.tutor_id]=db.ratings[x.tutor_id]||[]).push({id:x.id,mine:x.mine,who:x.who,score:x.score,text:x.comment,explain:x.explain,style:x.style,coop:x.coop,at:x.created_at,reply:x.reply,replyAt:x.reply_at}));
+    db.requests=[];db.edits=[];db.adminTutors=[];db.reports=[];db.subjReqs=[];
+    if(isAdmin){const a=await api('GET','/admin/data');Object.assign(db,{requests:a.requests,edits:a.edits,adminTutors:a.tutors,reports:a.reports,subjReqs:a.subjectRequests})}
+  }catch(e){console.warn(e)}
+}
+async function run(p){try{await p;return true}catch(e){alert('خطأ: '+e.message);return false}}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const $=id=>document.getElementById(id);
+
+/* نافذة إدخال نص (بديل prompt الذي لا يعمل داخل تليجرام) */
+function askText(title,ph,init=''){
+  return new Promise(res=>{
+    $('askT').textContent=title;const ta=$('askIn');ta.placeholder=ph||'';ta.value=init;
+    $('ask').classList.remove('hidden');$('ask').classList.add('flex');
+    const done=v=>{$('ask').classList.add('hidden');$('ask').classList.remove('flex');res(v)};
+    $('askOk').onclick=()=>done(ta.value.trim());$('askNo').onclick=()=>done(null);
+    setTimeout(()=>ta.focus(),60);
+  });
+}
+function resizeImg(file,max=360){
+  return new Promise((res,rej)=>{
+    const img=new Image();
+    img.onload=()=>{const side=Math.min(img.width,img.height),sx=(img.width-side)/2,sy=(img.height-side)/2,out=Math.min(max,side);
+      const c=document.createElement('canvas');c.width=c.height=out;c.getContext('2d').drawImage(img,sx,sy,side,side,0,0,out,out);res(c.toDataURL('image/jpeg',.82))};
+    img.onerror=()=>rej(new Error('تعذر قراءة الصورة'));img.src=URL.createObjectURL(file);
+  });
+}
 
 function avg(t){const r=db.ratings[t.id]||[];return r.length?Math.round(r.reduce((a,b)=>a+b.score,0)/r.length):(+t.rating||0)}
 const allSubjects=()=>[...new Set(db.tutors.flatMap(t=>t.subjects.map(s=>s.name.trim())))];
@@ -167,15 +283,21 @@ function priceText(t){
   const p=t.subjects.map(s=>+(s.price||s.onsite)).filter(Boolean);if(!p.length)return '—';
   const a=Math.min(...p),b=Math.max(...p);return a===b?`${a} ${SAR}`:`من ${a} إلى ${b} ${SAR}`;
 }
+const avatar=(t,sz=48)=>t.photo?`<img src="${esc(t.photo)}" alt="" class="rounded-full object-cover shrink-0" style="width:${sz}px;height:${sz}px">`:`<div class="rounded-full chip shrink-0 font-black" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.4)}px;color:#fff">${esc((String(t.name||'?').trim()[0])||'?')}</div>`;
+const BADGES={top:['⭐','الأعلى تقييماً','#f59e0b'],engaged:['💬','متفاعل مع الطلاب','#0ea5e9'],hot:['🔥','الأكثر طلباً','#ef4444']};
+const badgeChips=t=>(t.badges||[]).filter(b=>BADGES[b]).map(b=>`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold" style="background:${BADGES[b][2]}22;color:${BADGES[b][2]}">${BADGES[b][0]}<span> ${BADGES[b][1]}</span></span>`).join('');
+const availChip=t=>t.availability==='full'?`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-500">ممتلئ هذا الترم</span>`:`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-500"><i class="fa-solid fa-circle" style="font-size:6px;color:#10b981"></i> متاح</span>`;
 
 /* ===== التنقل ===== */
 function go(p){
   if(p==='admin'&&!isAdmin)return;
-  ['home','list','apply','rate','dev','admin'].forEach(x=>$('page-'+x).classList.add('hidden'));
+  if(p==='me'&&!me.tutorId)return;
+  curPage=p;
+  ['home','list','apply','rate','dev','admin','me'].forEach(x=>$('page-'+x).classList.add('hidden'));
   const el=$('page-'+p);el.classList.remove('hidden');el.querySelector('.scroll').scrollTo(0,0);
-  const cur=p==='admin'?'admin':p==='rate'?'rate':'home';
-  ['home','rate','admin'].forEach(k=>$('nav-'+k).className='nv flex flex-col items-center gap-1 p-2 '+(k===cur?'on text-blue-500':'text-slate-400'));
-  if(p==='home')renderHome();if(p==='list')renderList();if(p==='rate')renderRate();if(p==='apply')renderApply();if(p==='admin')renderAdmin();
+  const cur=p==='admin'?'admin':p==='rate'?'rate':p==='me'?'me':'home';
+  ['home','rate','me','admin'].forEach(k=>$('nav-'+k).className='nv flex flex-col items-center gap-1 p-2 '+(k===cur?'on text-blue-500':'text-slate-400'));
+  if(p==='home')renderHome();if(p==='list')renderList();if(p==='rate')renderRate();if(p==='apply')renderApply();if(p==='admin')renderAdmin();if(p==='me')renderMe();
 }
 function toggleTheme(){const h=document.documentElement;const d=h.classList.contains('dark');h.classList.toggle('dark',!d);h.classList.toggle('light',d)}
 
@@ -183,46 +305,127 @@ function toggleTheme(){const h=document.documentElement;const d=h.classList.cont
 function renderHome(){
   $('welcome').textContent=me.name||'زائرنا الكريم';$('handle').textContent=me.handle;
   $('subjCount').textContent=allSubjects().length;$('tutorCount').textContent=db.tutors.length;$('devLink').href=DEV_TG;
-  $('nav-admin').style.display=isAdmin?'flex':'none';
+  $('nav-admin').style.display=isAdmin?'flex':'none';$('nav-me').style.display=me.tutorId?'flex':'none';
 }
 function tutorRow(t,fn){
   const info=[t.gender,t.age?t.age+' سنة':''].filter(Boolean).join(' • ');
-  return `<button onclick="${fn}('${t.id}')" class="glass tcard w-full p-4 rounded-3xl text-right pop block space-y-3">
+  const fav=FAV.has(t.id);
+  return `<div onclick="${fn}('${t.id}')" role="button" class="glass tcard w-full p-4 rounded-3xl text-right pop block space-y-3 cursor-pointer">
     <div class="flex items-center gap-3">
-      ${ratingBadge(t,60)}
+      ${ratingBadge(t,56)}${avatar(t,46)}
       <div class="min-w-0 flex-1"><h4 class="font-black text-base flex items-center gap-1.5 flex-wrap"><span>${esc(t.name)}</span><span>${flagOf(t.nationality)}</span>${vb(t,18)}</h4><p class="text-[11px] text-slate-400 mt-0.5">${esc(info)}</p></div>
+      <button onclick="toggleFav('${t.id}',event)" class="shrink-0 w-9 h-9 rounded-full bg-slate-500/15 flex items-center justify-center"><i class="fa-${fav?'solid':'regular'} fa-heart" style="color:${fav?'#ef4444':'#94a3b8'}"></i></button>
     </div>
+    <div class="flex flex-wrap gap-1.5">${availChip(t)}${badgeChips(t)}</div>
     <div class="flex flex-wrap gap-1.5">${t.subjects.map(s=>`<span class="tag px-3 py-1 rounded-full bg-blue-500/15 text-blue-400 text-[11px] font-bold">${esc(s.name)}</span>`).join('')}</div>
-    <div class="flex items-center justify-between rounded-xl bg-emerald-500/10 px-3 py-2 text-xs"><span class="text-slate-400">سعر الشرح للترم</span><b class="text-sm">${priceText(t)}</b></div></button>`;
+    <div class="flex items-center justify-between rounded-xl bg-emerald-500/10 px-3 py-2 text-xs"><span class="text-slate-400">سعر الشرح للترم</span><b class="text-sm">${priceText(t)}</b></div></div>`;
 }
 function doSearch(q){
-  q=q.trim().toLowerCase();const box=$('results');if(!q){box.innerHTML='';return}
-  const f=db.tutors.filter(t=>t.name.toLowerCase().includes(q)||t.subjects.some(s=>s.name.toLowerCase().includes(q)));
-  box.innerHTML=f.length?f.map(t=>tutorRow(t,'openCard')).join(''):'<p class="text-center text-xs text-slate-400 p-3">لا توجد نتائج</p>';
+  q=String(q||'').trim().toLowerCase();const box=$('results');if(!q){box.innerHTML='';return}
+  const f=db.tutors.filter(t=>t.name.toLowerCase().includes(q)||t.subjects.some(s=>s.name.toLowerCase().includes(q)||String(s.targets||'').toLowerCase().includes(q)));
+  box.innerHTML=f.length?f.map(t=>tutorRow(t,'openCard')).join(''):`<p class="text-center text-xs text-slate-400 p-3">لا توجد نتائج</p><button onclick="askSubject('${esc(q).replace(/'/g,'')}')" class="btn bg-blue-500">اطلب مادة</button>`;
 }
-function renderList(){$('listBox').innerHTML=db.tutors.length?db.tutors.map(t=>tutorRow(t,'openCard')).join(''):'<p class="text-center text-xs text-slate-400 p-6">لا يوجد خصوصيون حالياً</p>'}
 function openList(){go('list')}
 
+/* ===== المفضلة ===== */
+async function toggleFav(id,ev){
+  if(ev)ev.stopPropagation();
+  if(!me.authed)return alert('افتح المنصة من داخل تليجرام أولاً');
+  const on=!FAV.has(id);on?FAV.add(id):FAV.delete(id);refreshLists();
+  try{await api('POST','/favorites',{tutor_id:id,on})}catch(e){on?FAV.delete(id):FAV.add(id);refreshLists();alert(e.message)}
+}
+function refreshLists(){
+  if(curPage==='list')applyFilters();if(curPage==='rate')renderRate();
+  if($('search'))doSearch($('search').value);
+}
+
+/* ===== قائمة الخصوصيين: بحث وفلترة وترتيب ===== */
+let F={q:'',sub:'',max:'',rate:0,avail:false,fav:false,ver:false,sort:'rating'};
+const fchip=(label,on,js)=>`<button onclick="${js}" class="shrink-0 px-3 py-1.5 rounded-full border text-[11px] font-bold transition ${on?'bg-blue-500 text-white border-blue-500':'border-slate-500/40 bg-slate-500/10'}">${label}</button>`;
+function renderList(){
+  const subs=allSubjects().slice(0,24);
+  $('listFilters').innerHTML=`
+    <div class="relative"><input id="fq" oninput="F.q=this.value;applyFilters()" value="${esc(F.q)}" placeholder="ابحث بالاسم أو المادة أو الجامعة" class="inp !pr-9"><i class="fa-solid fa-magnifying-glass absolute right-3 top-3.5 text-xs" style="color:#94a3b8"></i></div>
+    <div class="flex gap-2 overflow-x-auto pb-1">${[['rating','الأعلى تقييماً'],['price','الأرخص'],['ver','الموثقون أولاً']].map(([k,l])=>fchip(l,F.sort===k,`F.sort='${k}';renderList()`)).join('')}</div>
+    <div class="flex gap-2 overflow-x-auto pb-1">${fchip('متاح فقط',F.avail,`F.avail=!F.avail;renderList()`)}${fchip('المفضلة',F.fav,`F.fav=!F.fav;renderList()`)}${fchip('موثق فقط',F.ver,`F.ver=!F.ver;renderList()`)}${fchip('تقييم 70+',F.rate===70,`F.rate=F.rate===70?0:70;renderList()`)}${fchip('تقييم 85+',F.rate===85,`F.rate=F.rate===85?0:85;renderList()`)}</div>
+    ${subs.length?`<div class="flex gap-2 overflow-x-auto pb-1">${fchip('كل المواد',!F.sub,`F.sub='';renderList()`)}${subs.map(s=>fchip(esc(s),F.sub===s,`F.sub=this.dataset.s;renderList()" data-s="${esc(s)}`)).join('')}</div>`:''}
+    <div class="flex gap-2 items-center"><input id="fmax" type="number" inputmode="numeric" min="1" oninput="F.max=this.value;applyFilters()" value="${esc(F.max)}" placeholder="أعلى سعر للترم" class="inp"><span class="text-xs font-bold text-slate-400 shrink-0">${SAR}</span></div>`;
+  applyFilters();
+}
+function applyFilters(){
+  let l=db.tutors.slice();const q=F.q.trim().toLowerCase();
+  const priceOf=t=>{const p=t.subjects.filter(s=>!F.sub||s.name.trim()===F.sub).map(s=>+s.price||0).filter(Boolean);return p.length?Math.min(...p):Infinity};
+  if(q)l=l.filter(t=>[t.name,...t.subjects.flatMap(s=>[s.name,s.targets])].some(x=>String(x||'').toLowerCase().includes(q)));
+  if(F.sub)l=l.filter(t=>t.subjects.some(s=>s.name.trim()===F.sub));
+  if(+F.max)l=l.filter(t=>priceOf(t)<=+F.max);
+  if(F.rate)l=l.filter(t=>!isNew(t)&&avg(t)>=F.rate);
+  if(F.avail)l=l.filter(t=>t.availability!=='full');
+  if(F.fav)l=l.filter(t=>FAV.has(t.id));
+  if(F.ver)l=l.filter(t=>t.verified);
+  const sc=t=>isNew(t)?-1:avg(t);
+  if(F.sort==='price')l.sort((a,b)=>priceOf(a)-priceOf(b));
+  else if(F.sort==='ver')l.sort((a,b)=>(b.verified?1:0)-(a.verified?1:0)||sc(b)-sc(a));
+  else l.sort((a,b)=>sc(b)-sc(a));
+  $('listCount').textContent=l.length+' خصوصي';
+  $('listBox').innerHTML=l.length?l.map(t=>tutorRow(t,'openCard')).join(''):`<p class="text-center text-xs text-slate-400 p-6">${db.tutors.length?'لا توجد نتائج مطابقة':'لا يوجد خصوصيون حالياً'}</p>`;
+}
+async function askSubject(pre){
+  if(!me.authed)return alert('افتح المنصة من داخل تليجرام أولاً');
+  const v=await askText('اطلب مادة','اكتب اسم المادة المطلوبة',pre||F.q||F.sub||'');if(!v)return;
+  try{await api('POST','/subject-requests',{subject:v});alert('تم إرسال طلب المادة، شكراً لك')}catch(e){alert(e.message)}
+}
+
 /* ===== بطاقة الخصوصي ===== */
+const trk=(type,id)=>{try{api('POST','/track',{type,tutor_id:id}).catch(()=>{})}catch(e){}};
+function tutorLink(id){return CFG.appLink?`${CFG.appLink}${CFG.appLink.includes('?')?'&':'?'}startapp=t_${id}`:`${location.origin}/?t=${id}`}
+async function shareTutor(id){
+  const t=db.tutors.find(x=>x.id===id);if(!t)return;trk('share',id);
+  const link=tutorLink(id),text=t.name+' — '+(LANG==='en'?'tutor on the platform':'خصوصي على المنصة');
+  if(tg&&tg.openTelegramLink){tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent(text));return}
+  if(navigator.share){try{await navigator.share({title:t.name,text,url:link});return}catch(e){}}
+  try{await navigator.clipboard.writeText(link);alert('تم نسخ الرابط')}catch(e){prompt('',link)}
+}
+async function reportTutor(id){
+  if(!me.authed)return alert('افتح المنصة من داخل تليجرام أولاً');
+  const v=await askText('إبلاغ عن الخصوصي','اكتب سبب البلاغ');if(!v)return;
+  try{await api('POST','/reports',{kind:'tutor',tutor_id:id,reason:v});alert('تم إرسال بلاغك للإدارة')}catch(e){alert(e.message)}
+}
+async function reportReview(tid,rid){
+  if(!me.authed)return alert('افتح المنصة من داخل تليجرام أولاً');
+  const v=await askText('إبلاغ عن تقييم','اكتب سبب البلاغ');if(!v)return;
+  try{await api('POST','/reports',{kind:'review',tutor_id:tid,rating_id:rid,reason:v});alert('تم إرسال بلاغك للإدارة')}catch(e){alert(e.message)}
+}
 function openCard(id){
   const t=db.tutors.find(x=>x.id===id);if(!t)return;
   const price=v=>v?`<b class="text-lg">${esc(v)}</b> <span class="text-xs">${SAR}</span>`:'<span class="text-slate-400">—</span>';
-  const wa=t.whatsapp?`<a target="_blank" href="https://wa.me/${t.whatsapp.replace(/\D/g,'')}" class="btn bg-emerald-500 !py-3.5 text-sm"><i class="fa-brands fa-whatsapp"></i> واتساب</a>`:'';
+  const wa=t.whatsapp?`<a target="_blank" onclick="trk('wa','${id}')" href="https://wa.me/${t.whatsapp.replace(/\D/g,'')}" class="btn bg-emerald-500 !py-3.5 text-sm"><i class="fa-brands fa-whatsapp"></i> واتساب</a>`:'';
   const tlh=t.telegram?(/^https?:/i.test(t.telegram)?t.telegram:'https://t.me/'+t.telegram.replace('@','')):'';
-  const tl=tlh?`<a target="_blank" href="${esc(tlh)}" class="btn bg-sky-500 !py-3.5 text-sm"><i class="fa-brands fa-telegram"></i> تليجرام</a>`:'';
+  const tl=tlh?`<a target="_blank" onclick="trk('tg','${id}')" href="${esc(tlh)}" class="btn bg-sky-500 !py-3.5 text-sm"><i class="fa-brands fa-telegram"></i> تليجرام</a>`:'';
   const info=[t.gender,t.age?t.age+' سنة':'',t.nationality].filter(Boolean).join(' • ');
+  const fav=FAV.has(id);
   $('card').innerHTML=`<div class="glass tcard rounded-3xl p-6 space-y-5 pop">
-    <div class="flex items-center justify-between gap-3"><div class="min-w-0"><h3 class="text-xl font-black flex items-center gap-2 flex-wrap"><span>${esc(t.name)}</span><span>${flagOf(t.nationality)}</span>${vb(t,22)}</h3><p class="text-xs text-slate-400 mt-1">${esc(info)}</p></div>
-    ${ratingBadge(t,72)}</div>
+    <div class="flex items-center gap-3">${avatar(t,60)}<div class="min-w-0 flex-1"><h3 class="text-xl font-black flex items-center gap-2 flex-wrap"><span>${esc(t.name)}</span><span>${flagOf(t.nationality)}</span>${vb(t,22)}</h3><p class="text-xs text-slate-400 mt-1">${esc(info)}</p></div>${ratingBadge(t,72)}</div>
+    <div class="flex flex-wrap gap-1.5">${availChip(t)}${badgeChips(t)}</div>
+    ${t.bio?`<p class="text-xs leading-relaxed text-slate-400">${esc(t.bio)}</p>`:''}
+    ${t.availability==='full'?`<p class="text-[11px] rounded-xl bg-red-500/10 text-red-500 p-2 text-center font-bold">هذا الخصوصي ممتلئ حالياً، تقدر تتواصل معه وتسأل عن توفر مقعد.</p>`:''}
     <div class="space-y-3">${t.subjects.map(s=>`<div class="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 space-y-3">
-      <div class="flex items-center justify-between gap-2"><h4 class="font-black text-base">${esc(s.name)}</h4>${s.trial?`<a target="_blank" href="${esc(s.trial)}" class="text-[11px] px-3 py-1.5 rounded-lg bg-amber-500 text-white font-bold shrink-0"><i class="fa-solid fa-circle-play"></i> شرح تجريبي</a>`:''}</div>
+      <div class="flex items-center justify-between gap-2"><h4 class="font-black text-base">${esc(s.name)}</h4>${s.trial?`<a target="_blank" onclick="trk('trial','${id}')" href="${esc(s.trial)}" class="text-[11px] px-3 py-1.5 rounded-lg bg-amber-500 text-white font-bold shrink-0"><i class="fa-solid fa-circle-play"></i> شرح تجريبي</a>`:''}</div>
       ${s.targets?`<p class="text-xs text-slate-400"><i class="fa-solid fa-users"></i> ${esc(s.targets)}</p>`:''}
       <div class="rounded-xl bg-emerald-500/10 py-3 text-center"><div class="text-[11px] text-slate-400 mb-0.5">سعر الشرح للترم كامل</div>${price(s.price||s.onsite)}</div></div>`).join('')}</div>
     <div class="grid grid-cols-2 gap-3">${wa}${tl}</div>
+    <div class="grid grid-cols-3 gap-2 text-[11px] font-bold">
+      <button onclick="toggleFav('${id}');openCard('${id}')" class="py-2.5 rounded-xl border border-slate-500/30 bg-slate-500/10"><i class="fa-${fav?'solid':'regular'} fa-heart" style="color:${fav?'#ef4444':'#94a3b8'}"></i> المفضلة</button>
+      <button onclick="shareTutor('${id}')" class="py-2.5 rounded-xl border border-slate-500/30 bg-slate-500/10"><i class="fa-solid fa-share-nodes" style="color:#3b82f6"></i> مشاركة</button>
+      <button onclick="reportTutor('${id}')" class="py-2.5 rounded-xl border border-slate-500/30 bg-slate-500/10"><i class="fa-regular fa-flag" style="color:#94a3b8"></i> إبلاغ</button></div>
     <button onclick="closeCard()" class="w-full text-sm text-slate-400 py-1.5">إغلاق</button></div>`;
   $('overlay').classList.remove('hidden');$('overlay').classList.add('flex');
 }
 function closeCard(){$('overlay').classList.add('hidden');$('overlay').classList.remove('flex')}
+function openDeepLink(){
+  let id=null;try{id=new URLSearchParams(location.search).get('t')}catch(e){}
+  const sp=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param;if(!id&&sp&&/^t_/.test(sp))id=sp.slice(2);
+  if(id&&db.tutors.find(x=>x.id===id))openCard(id);
+}
 
 /* ===== التقييم ===== */
 const CATS=[['explain','الشرح'],['style','الأسلوب'],['coop','التعاون']];
@@ -233,8 +436,8 @@ function rvUpd(k,v){const e=$('rv_'+k);e.textContent=v;e.style.color=rc(+v)}
 function renderRate(){$('rateBox').innerHTML=db.tutors.length?db.tutors.map(t=>tutorRow(t,'openRate')).join(''):'<p class="text-center text-xs text-slate-400 p-6">لا يوجد خصوصيون للتقييم</p>'}
 function openRate(id){
   const t=db.tutors.find(x=>x.id===id);if(!t)return;
-  const list=db.ratings[id]||[],mine=list.find(r=>r.uid===me.id);
-  const form=mine?`<div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-2 text-xs">
+  const list=db.ratings[id]||[],mine=list.find(r=>r.mine),isMe=me.tutorId===id;
+  const form=isMe?'':mine?`<div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-2 text-xs">
       <p class="font-bold"><i class="fa-solid fa-circle-check"></i> سبق أن قيّمت هذا الخصوصي (${mine.score}/100)</p>
       <p class="text-slate-400">لا يمكن تعديل التقييم مباشرة. أرسل طلباً للإدارة وسيتم فتح التقييم لك بعد الموافقة.</p>
       <textarea id="er" rows="2" class="inp" placeholder="سبب طلب التعديل (اختياري)"></textarea>
@@ -242,27 +445,36 @@ function openRate(id){
     :`<div class="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-3"><p class="text-sm font-black">قيّم هذا الخصوصي</p>${CATS.map(([k,l])=>sl(k,l)).join('')}
       <textarea id="rc" rows="2" placeholder="تعليقك (اختياري)" class="inp"></textarea>
       <button onclick="sendRate('${id}')" class="btn bg-emerald-500">إرسال التقييم</button></div>`;
+  const reviews=list.slice().reverse().map(r=>`<div class="rounded-2xl bg-slate-500/10 p-3 space-y-1.5 text-xs">
+      <div class="flex items-center justify-between"><b>${esc(r.who)}</b><div class="flex items-center gap-2"><b style="color:${rc(r.score)}">${r.score}/100</b>${r.mine||isMe?'':`<button title="إبلاغ عن تقييم" onclick="reportReview('${id}','${r.id}')"><i class="fa-regular fa-flag" style="color:#94a3b8"></i></button>`}</div></div>
+      ${r.explain?`<div class="flex gap-3 text-[10px] text-slate-400"><span>الشرح ${r.explain}</span><span>الأسلوب ${r.style}</span><span>التعاون ${r.coop}</span></div>`:''}
+      ${r.text?`<p class="text-slate-400 leading-relaxed">${esc(r.text)}</p>`:''}
+      ${r.reply?`<div class="rounded-xl bg-blue-500/10 p-2 text-[11px] leading-relaxed"><b class="text-blue-500">رد الخصوصي:</b> <span>${esc(r.reply)}</span></div>`:''}
+      ${isMe?`<button onclick="replyTo('${id}','${r.id}')" class="text-[11px] text-blue-500 font-bold">${r.reply?'تعديل الرد':'رد على التقييم'}</button>`:''}</div>`).join('');
   $('card').innerHTML=`<div class="glass tcard rounded-3xl p-5 space-y-4 pop">
-    <div class="flex items-center justify-between gap-3"><h3 class="font-black text-lg flex items-center gap-2 flex-wrap"><span>${esc(t.name)}</span><span>${flagOf(t.nationality)}</span>${vb(t,20)}</h3>${ratingBadge(t,64)}</div>
+    <div class="flex items-center justify-between gap-3"><div class="flex items-center gap-3 min-w-0">${avatar(t,44)}<h3 class="font-black text-lg flex items-center gap-2 flex-wrap"><span>${esc(t.name)}</span><span>${flagOf(t.nationality)}</span>${vb(t,20)}</h3></div>${ratingBadge(t,64)}</div>
     <div class="space-y-3">${CATS.map(([k,l])=>catBar(l,catAvg(t,k))).join('')}</div>
     <p class="text-[11px] text-slate-400 text-center">${list.length?`بناءً على ${list.length} تقييم`:'لا توجد تقييمات بعد'}</p>
     ${form}
-    <div><p class="text-sm font-black mb-2">آراء الطلاب</p><div class="space-y-2 max-h-64 overflow-y-auto">${list.slice().reverse().map(r=>`<div class="rounded-2xl bg-slate-500/10 p-3 space-y-1.5 text-xs"><div class="flex items-center justify-between"><b>${esc(r.who)}</b><b style="color:${rc(r.score)}">${r.score}/100</b></div>${r.explain?`<div class="flex gap-3 text-[10px] text-slate-400"><span>الشرح ${r.explain}</span><span>الأسلوب ${r.style}</span><span>التعاون ${r.coop}</span></div>`:''}${r.text?`<p class="text-slate-400 leading-relaxed">${esc(r.text)}</p>`:''}</div>`).join('')||'<p class="text-xs text-slate-400 text-center py-2">كن أول من يقيّم</p>'}</div></div>
+    <div><p class="text-sm font-black mb-2">آراء الطلاب</p><div class="space-y-2 max-h-64 overflow-y-auto">${reviews||'<p class="text-xs text-slate-400 text-center py-2">كن أول من يقيّم</p>'}</div></div>
     <button onclick="closeCard()" class="w-full text-sm text-slate-400 py-1.5">إغلاق</button></div>`;
   $('overlay').classList.remove('hidden');$('overlay').classList.add('flex');
 }
+async function replyTo(tid,rid){
+  const cur=((db.ratings[tid]||[]).find(r=>r.id===rid)||{}).reply||'';
+  const v=await askText('رد على التقييم','اكتب ردك',cur);if(!v)return;
+  if(!await run(api('POST','/me/replies',{rating_id:rid,reply:v})))return;
+  await loadAll();openRate(tid);
+}
 async function sendRate(id){
-  if(!sb)return alert('لم يتم ربط قاعدة البيانات');
   const v={};CATS.forEach(([k])=>v[k]=+$('rs_'+k).value);
-  const score=Math.round((v.explain+v.style+v.coop)/3);
-  const{error}=await sb.from('ratings').insert({tutor_id:id,tg_id:me.id,who:me.name||'طالب',score,...v,comment:$('rc').value.trim()});
-  if(error)return alert(error.code==='23505'?'سبق أن قيّمت هذا الخصوصي. أرسل طلب تعديل للإدارة':'خطأ: '+error.message);
+  try{await api('POST','/ratings',{tutor_id:id,...v,comment:$('rc').value.trim()})}
+  catch(e){return alert(e.status===409?'سبق أن قيّمت هذا الخصوصي. أرسل طلب تعديل للإدارة':'خطأ: '+e.message)}
   await loadAll();closeCard();renderRate();alert('شكراً لتقييمك');
 }
 async function reqEdit(id){
-  if(!sb)return alert('لم يتم ربط قاعدة البيانات');
-  const{error}=await sb.from('rating_edits').insert({tutor_id:id,tg_id:me.id,who:me.name||'طالب',reason:$('er').value.trim()});
-  if(error)return alert(error.code==='23505'?'لديك طلب تعديل قيد المراجعة':'خطأ: '+error.message);
+  try{await api('POST','/rating-edits',{tutor_id:id,reason:$('er').value.trim()})}
+  catch(e){return alert(e.status===409?'لديك طلب تعديل قيد المراجعة':'خطأ: '+e.message)}
   closeCard();alert('تم إرسال طلبك للإدارة');
 }
 
@@ -301,18 +513,18 @@ function trialMode(p){const one=document.querySelector(`input[name="${p}trm"]:ch
 function addSubj(box){$(box).insertAdjacentHTML('beforeend',subjRow());trialMode(box.slice(0,-5))}
 function fixUrl(u){u=u.trim();if(!u)return'';if(!/^https?:\/\//i.test(u))u='https://'+u;return /^https?:\/\/[^\s.]+\.[^\s]+$/.test(u)?u:null}
 const sec=(n,t)=>`<p class="text-xs font-black text-blue-500 pt-2"><span class="inline-flex w-5 h-5 rounded-full bg-blue-500 text-white items-center justify-center text-[10px] ml-1">${n}</span>${t}</p>`;
-function formFields(p,t={}){
+function formFields(p,t={},mode='full'){
   const subs=t.subjects&&t.subjects.length?t.subjects:[{}];
   const same=subs.length>1&&subs[0].trial&&subs.every(x=>x.trial===subs[0].trial);
   const phone=String(t.whatsapp||'').replace(/\D/g,'').replace(/^966/,'');
   const tgv=t.telegram?String(t.telegram):'';
-  return sec(1,'البيانات الشخصية')+`
+  return `<div id="${p}personal" class="space-y-3 ${mode==='self'?'hidden':''}">`+sec(1,'البيانات الشخصية')+`
   <input id="${p}name" class="inp" placeholder="الاسم (ثنائي أو ثلاثي)" value="${esc(t.name)}">
   <div class="flex gap-2 items-center"><div class="natwrap relative flex-1"><input id="${p}nat" autocomplete="off" onfocus="natOpen('${p}')" oninput="natOpen('${p}');$('${p}flag').textContent=flagOf(this.value)" class="inp" placeholder="الجنسية (اضغط واختر أو اكتب)" value="${esc(t.nationality)}"><i class="fa-solid fa-chevron-down absolute left-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style="color:#94a3b8"></i><div id="${p}natbox" class="natbox hidden absolute z-30 top-full mt-1 w-full max-h-56 overflow-y-auto rounded-2xl border border-slate-500/30 shadow-2xl bg-white dark:bg-slate-900"></div></div><span id="${p}flag" class="text-2xl w-9 text-center shrink-0">${flagOf(t.nationality)}</span></div>
   <input id="${p}age" type="number" inputmode="numeric" class="inp" placeholder="العمر" value="${esc(t.age)}">
   <input type="hidden" id="${p}gender" value="${esc(t.gender)}">
-  <div id="${p}gbox" class="grid grid-cols-2 gap-2">${['ذكر','أنثى'].map(g=>`<button type="button" data-g="${g}" onclick="setGender('${p}','${g}')" class="py-3 rounded-xl border text-sm font-bold transition ${t.gender===g?gOn:gOff}">${g==='ذكر'?'♂':'♀'} ${g}</button>`).join('')}</div>
-  `+sec(2,'بيانات التواصل')+`
+  <div id="${p}gbox" class="grid grid-cols-2 gap-2">${['ذكر','أنثى'].map(g=>`<button type="button" data-g="${g}" onclick="setGender('${p}','${g}')" class="py-3 rounded-xl border text-sm font-bold transition ${t.gender===g?gOn:gOff}">${g==='ذكر'?'♂':'♀'} <span>${g}</span></button>`).join('')}</div>
+  </div>`+sec(2,'بيانات التواصل')+`
   <div class="flex gap-2 items-center" dir="ltr"><span class="shrink-0 px-3 py-[.7rem] rounded-xl bg-slate-500/20 text-xs font-bold">🇸🇦 +966</span><input id="${p}wa" type="tel" inputmode="numeric" maxlength="10" class="inp" placeholder="05xxxxxxxx" value="${esc(phone)}"></div>
   <input id="${p}tg" class="inp" dir="ltr" placeholder="@username أو t.me/username" value="${esc(tgv)}">
   `+sec(3,'بيانات المواد')+`
@@ -321,12 +533,15 @@ function formFields(p,t={}){
   <div id="${p}subjs" class="space-y-2">${subs.map(subjRow).join('')}</div>
   <button type="button" onclick="addSubj('${p}subjs')" class="w-full py-2 rounded-xl border border-dashed border-blue-500/50 text-blue-500 text-xs font-bold">+ إضافة مادة</button>`;
 }
-function readForm(p){
-  const name=$(p+'name').value.trim().replace(/\s+/g,' ');
-  if(name.split(' ').length<2)return bad('اكتب اسمك الثنائي أو الثلاثي');
-  const nationality=$(p+'nat').value.trim();if(!nationality)return bad('اكتب الجنسية');
-  const age=+$(p+'age').value;if(!(age>=15&&age<=80))return bad('اكتب عمراً صحيحاً');
-  const gender=$(p+'gender').value;if(!gender)return bad('اختر ذكر أو أنثى');
+function readForm(p,mode='full'){
+  let name,nationality,age,gender;
+  if(mode!=='self'){
+    name=$(p+'name').value.trim().replace(/\s+/g,' ');
+    if(name.split(' ').length<2)return bad('اكتب اسمك الثنائي أو الثلاثي');
+    nationality=$(p+'nat').value.trim();if(!nationality)return bad('اكتب الجنسية');
+    age=+$(p+'age').value;if(!(age>=15&&age<=80))return bad('اكتب عمراً صحيحاً');
+    gender=$(p+'gender').value;if(!gender)return bad('اختر ذكر أو أنثى');
+  }
   const ph=$(p+'wa').value.replace(/[\s\-+]/g,'');
   if(!/^0?5\d{8}$/.test(ph))return bad('رقم الجوال لازم يكون سعودي: يبدأ بـ 05 ويتكون من 10 أرقام، أو يبدأ بـ 5 ويتكون من 9 أرقام');
   const whatsapp='966'+ph.replace(/^0/,'');
@@ -342,7 +557,8 @@ function readForm(p){
     subjects.push({name:sn,targets,price,trial});
   }
   if(!subjects.length)return bad('أضف مادة واحدة على الأقل');
-  return{name,nationality,age,gender,whatsapp,telegram:'https://t.me/'+u,subjects};
+  const tgl='https://t.me/'+u;
+  return mode==='self'?{whatsapp,telegram:tgl,subjects}:{name,nationality,age,gender,whatsapp,telegram:tgl,subjects};
 }
 
 /* ===== التسجيل كخصوصي ===== */
@@ -362,55 +578,148 @@ function renderApply(){
 function declineApply(){alert('لا يمكن إكمال التسجيل بدون الموافقة على التعهد');go('home')}
 async function submitApply(){
   const o=readForm('ap');if(!o)return;
-  if(!await run(sb&&sb.from('requests').insert({...o,pledge:true,tg_id:me.id})))return;alert('تم إرسال طلبك للإدارة، سيتم التواصل معك');go('home');
+  if(!await run(api('POST','/requests',o)))return;alert('تم إرسال طلبك للإدارة، سيتم التواصل معك');go('home');
+}
+
+
+/* ===== حساب الخصوصي ===== */
+const gOn2='bg-blue-500 text-white border-blue-500';
+function setAvail(v){$('meav').value=v;$('meavbox').querySelectorAll('button').forEach(b=>{b.className='py-3 rounded-xl border text-sm font-bold transition '+(b.dataset.g===v?gOn:gOff)})}
+async function renderMe(){
+  const box=$('meBox'),t=db.tutors.find(x=>x.id===me.tutorId);
+  if(!t){box.innerHTML='<p class="text-center text-xs text-slate-400 p-6">لا يوجد حساب خصوصي مرتبط بك</p>';return}
+  let st={};try{st=await api('GET','/me/stats')}catch(e){}
+  const stat=(l,v,c)=>`<div class="rounded-2xl bg-slate-500/10 p-3 text-center"><div class="text-xl font-black" style="color:${c}">${v}</div><div class="text-[10px] text-slate-400 mt-1">${l}</div></div>`;
+  box.innerHTML=`
+    <div class="flex items-center gap-3">${avatar(t,64)}<div class="flex-1 min-w-0"><h3 class="font-black flex items-center gap-1.5 flex-wrap"><span>${esc(t.name)}</span><span>${flagOf(t.nationality)}</span>${vb(t,18)}</h3><div class="flex flex-wrap gap-1 mt-1">${availChip(t)}${badgeChips({badges:st.badges||[]})}</div></div></div>
+    <label class="btn bg-blue-500 cursor-pointer"><i class="fa-solid fa-camera"></i> تغيير الصورة<input type="file" accept="image/*" class="hidden" onchange="uploadMyPhoto(this)"></label>
+    <p class="text-xs font-black text-slate-400">إحصائيات آخر 30 يوم</p>
+    <div class="grid grid-cols-2 gap-2">${stat('نقرات واتساب',st.wa??0,'#10b981')}${stat('نقرات تليجرام',st.tg??0,'#0ea5e9')}${stat('فتح الشرح التجريبي',st.trial??0,'#f59e0b')}${stat('أضافوك للمفضلة',st.favorites??0,'#ef4444')}${stat('متوسط التقييم',st.avg??'—',st.avg?rc(st.avg):'#94a3b8')}${stat('عدد التقييمات',st.ratings??0,'#3b82f6')}</div>
+    ${st.unreplied?`<p class="text-[11px] rounded-xl bg-amber-500/10 text-amber-500 p-2 text-center font-bold">${st.unreplied} · تقييمات بدون رد</p>`:''}
+    ${st.warnings?`<p class="text-[11px] rounded-xl bg-red-500/10 text-red-500 p-2 text-center font-bold">الإنذارات: ${st.warnings}/3</p>`:''}
+    <button onclick="openRate('${t.id}')" class="btn bg-emerald-500"><i class="fa-solid fa-comments"></i> عرض تقييماتي والرد عليها</button>
+    <p class="text-xs font-black text-slate-400 pt-2">حالة التوفر</p>
+    <input type="hidden" id="meav" value="${esc(t.availability||'available')}">
+    <div id="meavbox" class="grid grid-cols-2 gap-2"><button type="button" data-g="available" onclick="setAvail('available')" class="py-3 rounded-xl border text-sm font-bold"><span>متاح للطلاب</span></button><button type="button" data-g="full" onclick="setAvail('full')" class="py-3 rounded-xl border text-sm font-bold"><span>ممتلئ</span></button></div>
+    <textarea id="mebio" rows="3" maxlength="300" class="inp" placeholder="نبذة عنك (اختياري)">${esc(t.bio||st.bio||'')}</textarea>
+    ${formFields('me',t,'self')}
+    <button onclick="saveMe()" class="btn bg-blue-500"><i class="fa-solid fa-floppy-disk"></i> حفظ التغييرات</button>`;
+  setAvail(t.availability||'available');trialMode('me');
+}
+async function saveMe(){
+  const o=readForm('me','self');if(!o)return;
+  if(!await run(api('PUT','/me/tutor',{...o,availability:$('meav').value,bio:$('mebio').value.trim()})))return;
+  await loadAll();alert('تم حفظ التغييرات');renderMe();
+}
+async function uploadMyPhoto(inp){
+  const f=inp.files&&inp.files[0];if(!f)return;
+  try{const img=await resizeImg(f);await api('POST','/me/tutor/photo',{image:img});await loadAll();renderMe()}catch(e){alert('خطأ: '+e.message)}
 }
 
 /* ===== لوحة الإدارة ===== */
-let tab='tutors',editId=null;
-const TABS=[['tutors','<i class="fa-solid fa-chalkboard-user"></i> الخصوصيون'],['requests','<i class="fa-solid fa-inbox"></i> الطلبات'],['edits','<i class="fa-solid fa-pen-ruler"></i> طلبات تعديل التقييم'],['terms','<i class="fa-solid fa-scroll"></i> الشروط'],['backup','<i class="fa-solid fa-database"></i> النسخ الاحتياطي']];
+let tab='tutors',editId=null,AD_IMG='';
+const TABS=[['tutors','<i class="fa-solid fa-chalkboard-user"></i> الخصوصيون'],['requests','<i class="fa-solid fa-inbox"></i> الطلبات'],['reports','<i class="fa-solid fa-flag"></i> البلاغات'],['edits','<i class="fa-solid fa-pen-ruler"></i> تعديل التقييم'],['subjreq','<i class="fa-solid fa-book-medical"></i> المواد المطلوبة'],['stats','<i class="fa-solid fa-chart-line"></i> الإحصائيات'],['bcast','<i class="fa-solid fa-bullhorn"></i> إشعار عام'],['terms','<i class="fa-solid fa-scroll"></i> الشروط'],['backup','<i class="fa-solid fa-database"></i> النسخ الاحتياطي']];
+const tabN=k=>({requests:db.requests.length,reports:db.reports.length,edits:db.edits.length,subjreq:db.subjReqs.length}[k]||0);
+const sBtn='px-2 py-1 rounded-lg text-white';
 function renderAdmin(){
+  if(!isAdmin){go('home');return}
   $('stT').textContent=db.tutors.length;$('stR').textContent=db.requests.length;$('stS').textContent=allSubjects().length;
-  $('adminTabs').innerHTML=TABS.map(([k,l])=>`<button onclick="tab='${k}';editId=null;renderAdmin()" class="py-3 rounded-xl text-xs font-bold border ${tab===k?'bg-blue-500 text-white border-blue-500':'border-slate-500/40 text-white bg-slate-600'}">${l}${k==='edits'&&db.edits.length?' ('+db.edits.length+')':''}</button>`).join('');
+  $('adminTabs').innerHTML=TABS.map(([k,l])=>`<button onclick="tab='${k}';editId=null;AD_IMG='';renderAdmin()" class="py-3 rounded-xl text-xs font-bold border ${tab===k?'bg-blue-500 text-white border-blue-500':'border-slate-500/40 text-white bg-slate-600'}">${l}${tabN(k)?' ('+tabN(k)+')':''}</button>`).join('');
   const b=$('adminBody');
-  if(!session){$('adminTabs').innerHTML='';b.innerHTML=`<h3 class="font-bold text-sm"><i class="fa-solid fa-lock"></i> تسجيل دخول الإدارة</h3><input id="lem" type="email" dir="ltr" class="inp" placeholder="البريد"><input id="lpw" type="password" dir="ltr" class="inp" placeholder="كلمة المرور"><button onclick="login()" class="btn bg-blue-500">دخول</button>`;return}
   if(tab==='tutors'){
-    const t=editId?db.tutors.find(x=>x.id===editId):null;
+    const t=editId?db.adminTutors.find(x=>x.id===editId):null;
     b.innerHTML=`<h3 class="font-bold text-sm">${t?'تعديل خصوصي':'إضافة خصوصي'}</h3>${formFields('ad',t||{})}
+      <input id="adtg" dir="ltr" inputmode="numeric" class="inp" placeholder="آيدي تليجرام للخصوصي (اختياري، لربط حسابه بلوحته)" value="${esc(t?t.tg_id:'')}">
+      <label class="block text-[11px] text-slate-400">صورة الخصوصي (اختياري)<input type="file" accept="image/*" class="inp mt-1" onchange="adPhoto(this)"></label>
       <input id="adrating" type="number" min="1" max="100" class="inp" placeholder="التقييم الابتدائي من 100" value="${esc(t?t.rating:'')}">
       <button onclick="saveTutor()" class="btn bg-blue-500">${t?'حفظ التعديل':'إضافة الخصوصي'}</button>${t?'<button onclick="editId=null;renderAdmin()" class="btn bg-slate-500">إلغاء</button>':''}
-      <div class="pt-3 border-t border-slate-500/20 space-y-2">${db.tutors.map(x=>`<div class="rounded-xl bg-slate-500/10 p-2 flex items-center justify-between gap-2 text-xs"><span class="font-bold truncate flex items-center gap-1">${esc(x.name)} ${flagOf(x.nationality)} ${vb(x,15)}</span><span class="shrink-0"><button onclick="toggleVerify('${x.id}',${!x.verified})" class="px-2 py-1 rounded-lg ${x.verified?'bg-amber-500':'bg-slate-500'}"><i class="fa-solid fa-certificate"></i> ${x.verified?'موثّق':'توثيق'}</button> <button onclick="editId='${x.id}';renderAdmin();scrollTo(0,0)" class="px-2 py-1 rounded-lg bg-blue-500"><i class="fa-solid fa-pen"></i> تعديل</button> <button onclick="delTutor('${x.id}')" class="px-2 py-1 rounded-lg bg-red-500"><i class="fa-solid fa-trash"></i> حذف</button></span></div>`).join('')||'<p class="text-xs text-slate-400 text-center">لا يوجد خصوصيون</p>'}</div>`;
+      <div class="pt-3 border-t border-slate-500/20 space-y-2">${db.adminTutors.map(x=>`<div class="rounded-xl bg-slate-500/10 p-2 space-y-2 text-xs ${x.status==='removed'?'border border-red-500/40 opacity-80':''}">
+        <div class="flex items-center gap-2">${avatar(x,32)}<span class="font-bold truncate flex-1 flex items-center gap-1">${esc(x.name)} ${flagOf(x.nationality)} ${vb(x,15)}</span>${x.warnings?`<span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 font-bold">⚠️ ${x.warnings}/3</span>`:''}${x.status==='removed'?'<span class="px-2 py-0.5 rounded-full bg-red-500/20 text-red-500 font-bold">ملغى</span>':''}</div>
+        <div class="flex flex-wrap gap-1.5"><button onclick="toggleVerify('${x.id}',${!x.verified})" class="${sBtn} ${x.verified?'bg-amber-500':'bg-slate-500'}"><i class="fa-solid fa-certificate"></i> ${x.verified?'موثّق':'توثيق'}</button>
+        <button onclick="warnT('${x.id}')" class="${sBtn} bg-orange-500"><i class="fa-solid fa-triangle-exclamation"></i> إنذار</button>
+        ${x.status==='removed'?`<button onclick="restoreT('${x.id}')" class="${sBtn} bg-emerald-500"><i class="fa-solid fa-rotate-left"></i> استعادة</button>`:''}
+        <button onclick="editId='${x.id}';AD_IMG='';renderAdmin();scrollTo(0,0)" class="${sBtn} bg-blue-500"><i class="fa-solid fa-pen"></i> تعديل</button>
+        <button onclick="delTutor('${x.id}')" class="${sBtn} bg-red-500"><i class="fa-solid fa-trash"></i></button></div></div>`).join('')}</div>`;
+    trialMode('ad');
   }else if(tab==='requests'){
-    b.innerHTML=`<h3 class="font-bold text-sm">طلبات التسجيل</h3>`+(db.requests.map(r=>`<div class="rounded-2xl border border-amber-500/20 p-3 space-y-1 text-xs"><b>${esc(r.name)} ${flagOf(r.nationality)}</b> <span class="text-slate-400">${esc([r.gender,r.age?r.age+' سنة':''].filter(Boolean).join(' • '))} — ${new Date(r.created_at).toLocaleDateString('ar')}</span>
+    b.innerHTML=`<h3 class="font-bold text-sm">طلبات التسجيل</h3>`+(db.requests.map(r=>`<div class="rounded-2xl border border-amber-500/20 p-3 space-y-1 text-xs"><b>${esc(r.name)} ${flagOf(r.nationality)}</b> <span class="text-slate-400">${esc([r.gender,r.age?r.age+' سنة':''].filter(Boolean).join(' • '))} — ${new Date(r.created_at+'Z').toLocaleDateString('ar')}</span>
       <p class="text-slate-400">${esc(r.subjects.map(s=>`${s.name} (${s.price||'-'} ${SAR}) — ${s.targets||''}`).join('، '))}</p><p dir="ltr" class="text-slate-400">${esc(r.whatsapp)} ${esc(r.telegram)}</p>
       <div class="grid grid-cols-2 gap-2 pt-1"><button onclick="approve('${r.id}')" class="btn bg-emerald-500">قبول</button><button onclick="rejectReq('${r.id}')" class="btn bg-red-500">رفض</button></div></div>`).join('')||'<p class="text-xs text-slate-400 text-center">لا توجد طلبات</p>');
+  }else if(tab==='reports'){
+    b.innerHTML=`<h3 class="font-bold text-sm">البلاغات</h3>`+(db.reports.map(r=>`<div class="rounded-2xl border border-red-500/20 p-3 space-y-1 text-xs">
+      <p><b>${esc(r.who)}</b> يبلّغ عن ${r.kind==='review'?'تقييم':'الخصوصي'}: <b>${esc(r.tutor_name||'—')}</b></p>
+      <p class="text-slate-400">السبب: ${esc(r.reason)}</p>
+      ${r.kind==='review'?`<p class="text-slate-400">التقييم من ${esc(r.rater||'—')} (${r.score??'-'}/100): ${esc(r.comment||'بدون تعليق')}</p>`:''}
+      <div class="grid ${r.kind==='review'?'grid-cols-3':'grid-cols-2'} gap-2 pt-1"><button onclick="resolveReport('${r.id}','dismiss')" class="btn bg-slate-500">تجاهل</button>
+      ${r.kind==='review'?`<button onclick="resolveReport('${r.id}','delete_review')" class="btn bg-red-500">حذف التقييم</button>`:''}
+      <button onclick="resolveReport('${r.id}','warn')" class="btn bg-orange-500">إنذار</button></div></div>`).join('')||'<p class="text-xs text-slate-400 text-center">لا توجد بلاغات</p>');
   }else if(tab==='edits'){
-    b.innerHTML=`<h3 class="font-bold text-sm">طلبات تعديل التقييم</h3>`+(db.edits.map(r=>{const t=db.tutors.find(x=>x.id===r.tutor_id),m=(db.ratings[r.tutor_id]||[]).find(x=>x.uid===r.tg_id);
+    b.innerHTML=`<h3 class="font-bold text-sm">طلبات تعديل التقييم</h3>`+(db.edits.map(r=>{const t=db.tutors.find(x=>x.id===r.tutor_id),m=r.score?r:null;
       return `<div class="rounded-2xl border border-amber-500/20 p-3 space-y-1 text-xs"><p><b>${esc(r.who)}</b> يطلب تعديل تقييمه للخصوصي <b>${esc(t?t.name:'—')}</b></p>
       ${m?`<p class="text-slate-400">تقييمه الحالي: ${m.score}/100${m.explain?` (الشرح ${m.explain} • الأسلوب ${m.style} • التعاون ${m.coop})`:''}</p>`:''}
       ${r.reason?`<p class="text-slate-400">السبب: ${esc(r.reason)}</p>`:''}
       <div class="grid grid-cols-2 gap-2 pt-1"><button onclick="allowEdit('${r.id}')" class="btn bg-emerald-500">السماح بالتعديل</button><button onclick="rejectEdit('${r.id}')" class="btn bg-red-500">رفض</button></div></div>`}).join('')||'<p class="text-xs text-slate-400 text-center">لا توجد طلبات</p>');
+  }else if(tab==='subjreq'){
+    b.innerHTML=`<h3 class="font-bold text-sm">المواد التي يطلبها الطلاب</h3><p class="text-[11px] text-slate-400">مواد ما لقى لها الطلاب خصوصي. استخدمها لتعرف من تبحث عنه.</p>`+(db.subjReqs.map(r=>`<div class="rounded-xl bg-slate-500/10 p-3 flex items-center justify-between gap-2 text-xs"><span class="font-bold">${esc(r.subject)}</span><span class="flex items-center gap-2"><b class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-500">${r.n}</b><button data-s="${esc(r.subject)}" onclick="clearSubj(this.dataset.s)" class="${sBtn} bg-slate-500"><i class="fa-solid fa-check"></i></button></span></div>`).join('')||'<p class="text-xs text-slate-400 text-center">لا توجد طلبات</p>');
+  }else if(tab==='stats'){
+    b.innerHTML='<p class="text-xs text-slate-400 text-center">جاري التحميل...</p>';
+    api('GET','/admin/stats').then(s=>{
+      if(tab!=='stats')return;
+      const c=(l,v,col)=>`<div class="rounded-2xl bg-slate-500/10 p-3 text-center"><div class="text-xl font-black" style="color:${col}">${v}</div><div class="text-[10px] text-slate-400 mt-1">${l}</div></div>`;
+      const list=(arr,k='name')=>arr.length?arr.map(x=>`<div class="flex justify-between rounded-lg bg-slate-500/10 px-3 py-1.5 text-xs"><span>${esc(x[k])}</span><b>${x.n}</b></div>`).join(''):'<p class="text-[11px] text-slate-400">لا توجد بيانات بعد</p>';
+      b.innerHTML=`<h3 class="font-bold text-sm">الزوار</h3><div class="grid grid-cols-2 gap-2">${c('اليوم',s.visitors.today,'#3b82f6')}${c('آخر 7 أيام',s.visitors.week,'#6366f1')}${c('آخر 30 يوم',s.visitors.month,'#0ea5e9')}${c('إجمالي المستخدمين',s.visitors.total,'#10b981')}</div>
+        <h3 class="font-bold text-sm pt-2">آخر 30 يوم</h3><div class="grid grid-cols-3 gap-2">${c('واتساب',s.clicks.wa,'#10b981')}${c('تليجرام',s.clicks.tg,'#0ea5e9')}${c('شرح تجريبي',s.clicks.trial,'#f59e0b')}</div>
+        <div class="grid grid-cols-3 gap-2">${c('خصوصيون',s.totals.tutors,'#3b82f6')}${c('تقييمات',s.totals.ratings,'#eab308')}${c('مفضلات',s.totals.favorites,'#ef4444')}</div>
+        <h3 class="font-bold text-sm pt-2">الأكثر تواصلاً</h3><div class="space-y-1">${list(s.topTutors)}</div>
+        <h3 class="font-bold text-sm pt-2">أكثر المواد توفراً</h3><div class="space-y-1">${list(s.topSubjects)}</div>
+        <h3 class="font-bold text-sm pt-2">أكثر المواد طلباً</h3><div class="space-y-1">${list(s.requested)}</div>`;
+    }).catch(e=>{b.innerHTML='<p class="text-xs text-red-500 text-center">'+esc(e.message)+'</p>'});
+  }else if(tab==='bcast'){
+    b.innerHTML=`<h3 class="font-bold text-sm">إشعار عام</h3><p class="text-[11px] text-slate-400 leading-relaxed">يُرسل رسالة في تليجرام لكل من فتح المنصة قبل ذلك (ولم يحظر البوت). استخدمه بحذر.</p>
+      <textarea id="bctext" rows="4" maxlength="1000" class="inp" placeholder="اكتب نص الرسالة"></textarea>
+      <button onclick="sendBroadcast()" class="btn bg-blue-500"><i class="fa-solid fa-paper-plane"></i> إرسال للجميع</button>`;
   }else if(tab==='terms'){
     b.innerHTML=`<h3 class="font-bold text-sm">الشروط والتعهد</h3><div class="space-y-2">${db.terms.map((x,i)=>`<div class="rounded-xl bg-slate-500/10 p-2 flex gap-2 items-start text-xs"><span class="flex-1">${i+1}. ${esc(x.text)}</span><button onclick="delTerm('${x.id}')" class="px-2 rounded-lg bg-red-500"><i class="fa-solid fa-xmark"></i></button></div>`).join('')}</div>
       <textarea id="newTerm" rows="2" class="inp" placeholder="اكتب شرطاً أو تعهداً جديداً"></textarea><button onclick="addTerm()" class="btn bg-blue-500">+ إضافة</button>`;
   }else{
-    b.innerHTML=`<h3 class="font-bold text-sm">نسخة احتياطية لبيانات الخصوصيين</h3><p class="text-[11px] text-slate-400 leading-relaxed">البيانات محفوظة في قاعدة Supabase. حمّل نسخة JSON تحتفظ بها عندك.</p>
+    b.innerHTML=`<h3 class="font-bold text-sm">نسخة احتياطية</h3><p class="text-[11px] text-slate-400 leading-relaxed">السيرفر يحفظ نسخة تلقائية كل يوم داخل مجلد data/backups (آخر 14 يوم). وتقدر تحمّل نسخة JSON الآن.</p>
       <button onclick="exportData()" class="btn bg-emerald-500"><i class="fa-solid fa-download"></i> تحميل النسخة (JSON)</button>`;
   }
 }
-async function login(){const{data,error}=await sb.auth.signInWithPassword({email:$('lem').value.trim(),password:$('lpw').value});if(error)return alert('بيانات الدخول غير صحيحة');session=data.session;await loadAll();renderAdmin()}
+async function adPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;try{AD_IMG=await resizeImg(f)}catch(e){alert(e.message)}}
 async function done(p){if(await run(p)){await loadAll();renderAdmin()}}
-function saveTutor(){const o=readForm('ad');if(!o)return;o.rating=+$('adrating').value||0;const q=sb&&sb.from('tutors');done(editId?q.update(o).eq('id',editId):q.insert(o));editId=null}
-async function allowEdit(id){const r=db.edits.find(x=>x.id===id);if(!r)return;if(await run(sb.from('ratings').delete().eq('tutor_id',r.tutor_id).eq('tg_id',r.tg_id)))done(sb.from('rating_edits').delete().eq('id',id))}
-function rejectEdit(id){if(confirm('رفض طلب التعديل؟'))done(sb.from('rating_edits').delete().eq('id',id))}
-function toggleVerify(id,v){done(sb.from('tutors').update({verified:v}).eq('id',id))}
-function delTutor(id){if(confirm('حذف هذا الخصوصي نهائياً؟'))done(sb.from('tutors').delete().eq('id',id))}
-async function approve(id){const{id:_,tg_id,created_at,...t}=db.requests.find(x=>x.id===id);if(await run(sb.from('tutors').insert({...t,rating:0})))done(sb.from('requests').delete().eq('id',id))}
-function rejectReq(id){if(confirm('رفض الطلب؟'))done(sb.from('requests').delete().eq('id',id))}
-function addTerm(){const v=$('newTerm').value.trim();if(v)done(sb.from('terms').insert({text:v,sort:db.terms.length+1}))}
-function delTerm(id){done(sb.from('terms').delete().eq('id',id))}
-function exportData(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({tutors:db.tutors,terms:db.terms},null,2)],{type:'application/json'}));a.download='tutors-backup.json';a.click()}
+function saveTutor(){
+  const o=readForm('ad');if(!o)return;o.rating=+$('adrating').value||0;o.tg_id=$('adtg').value.trim();if(AD_IMG)o.image=AD_IMG;
+  const id=editId;editId=null;AD_IMG='';done(id?api('PUT','/admin/tutors/'+id,o):api('POST','/admin/tutors',o));
+}
+function allowEdit(id){done(api('POST','/admin/edits/'+id+'/allow',{}))}
+function rejectEdit(id){if(confirm('رفض طلب التعديل؟'))done(api('DELETE','/admin/edits/'+id))}
+function toggleVerify(id,v){done(api('POST','/admin/tutors/'+id+'/verify',{verified:v}))}
+function delTutor(id){if(confirm('حذف هذا الخصوصي نهائياً؟'))done(api('DELETE','/admin/tutors/'+id))}
+function restoreT(id){done(api('POST','/admin/tutors/'+id+'/restore',{}))}
+async function warnT(id){
+  const r=await askText('إنذار للخصوصي','سبب الإنذار');if(!r)return;
+  try{const j=await api('POST','/admin/tutors/'+id+'/warn',{reason:r});alert(j.removed?'تم إلغاء الخصوصي بعد 3 إنذارات':'تم تسجيل الإنذار ('+j.warnings+'/3)');await loadAll();renderAdmin()}catch(e){alert('خطأ: '+e.message)}
+}
+function resolveReport(id,action){
+  if(action==='delete_review'&&!confirm('حذف هذا التقييم نهائياً؟'))return;
+  if(action==='warn'&&!confirm('تسجيل إنذار على الخصوصي بسبب هذا البلاغ؟'))return;
+  done(api('POST','/admin/reports/'+id+'/resolve',{action}));
+}
+function clearSubj(s){done(api('POST','/admin/subject-requests/clear',{subject:s}))}
+async function sendBroadcast(){
+  const text=$('bctext').value.trim();if(text.length<2)return alert('اكتب نص الرسالة');
+  if(!confirm('إرسال هذه الرسالة لجميع المستخدمين؟'))return;
+  try{const j=await api('POST','/admin/broadcast',{text});alert('بدأ الإرسال إلى '+j.total+' مستخدم، وستصلك رسالة عند الانتهاء');$('bctext').value=''}catch(e){alert('خطأ: '+e.message)}
+}
+function approve(id){done(api('POST','/admin/requests/'+id+'/approve',{}))}
+function rejectReq(id){if(confirm('رفض الطلب؟'))done(api('DELETE','/admin/requests/'+id))}
+function addTerm(){const v=$('newTerm').value.trim();if(v)done(api('POST','/admin/terms',{text:v}))}
+function delTerm(id){done(api('DELETE','/admin/terms/'+id))}
+async function exportData(){try{const d=await api('GET','/admin/backup');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));a.download='barq-backup.json';a.click()}catch(e){alert('خطأ: '+e.message)}}
 
-(async()=>{if(!sb)console.warn('SUPABASE_URL / SUPABASE_KEY غير مضبوطة');else session=(await sb.auth.getSession()).data.session;await loadAll();renderHome()})();
+(async()=>{await loadAll();renderHome();setLang(LANG);openDeepLink()})();
+
 </script>
 </body>
 </html>
