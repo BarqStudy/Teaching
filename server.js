@@ -31,6 +31,9 @@ const DB_PATH = env.DB_PATH || path.join(__dir, 'data', 'barq.db');
 const TRUST_PROXY = env.TRUST_PROXY === '1';
 const APP_LINK = (env.APP_LINK || '').trim();           // مثال: https://t.me/MyBot/app (اختياري، لروابط المشاركة)
 const BACKUP_TO_TELEGRAM = env.BACKUP_TO_TELEGRAM === '1';
+const TG_API = (env.TG_API || 'https://api.telegram.org').replace(/\/$/, '');
+const PUBLIC_URL = (env.PUBLIC_URL || (env.DOMAIN ? 'https://' + env.DOMAIN : '')).replace(/\/$/, '');
+let BOT_USERNAME = '';
 const MAX_AGE = +env.INITDATA_MAX_AGE || 60 * 60 * 24 * 2; // صلاحية توقيع تليجرام (ثانية)
 if (!BOT_TOKEN || !ADMIN_IDS.size) {
   console.error('❌ لازم تحدد BOT_TOKEN و OWNER_ID في ملف .env');
@@ -66,15 +69,20 @@ const get = (sql, ...a) => db.prepare(sql).get(...a);
 const run = (sql, ...a) => db.prepare(sql).run(...a);
 const tx = fn => { db.exec('BEGIN'); try { const r = fn(); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; } };
 const uuid = () => crypto.randomUUID();
+const loadBadLater = () => loadBad();
 
 /* ---------- ترقية الجداول (آمنة للتكرار) ---------- */
 const colsOf = t => all(`PRAGMA table_info(${t})`).map(c => c.name);
 const addCol = (t, c, def) => { if (!colsOf(t).includes(c)) db.exec(`ALTER TABLE ${t} ADD COLUMN ${c} ${def}`); };
+db.exec(`CREATE TABLE IF NOT EXISTS users(tg_id TEXT PRIMARY KEY, name TEXT, first_seen TEXT DEFAULT (datetime('now')), last_seen TEXT DEFAULT (datetime('now')), blocked INTEGER DEFAULT 0);
+CREATE TABLE IF NOT EXISTS subject_requests(id TEXT PRIMARY KEY, created_at TEXT DEFAULT (datetime('now')), tg_id TEXT, who TEXT, subject TEXT, note TEXT DEFAULT '');`);
 addCol('tutors', 'tg_id', 'TEXT');
 addCol('tutors', 'availability', "TEXT DEFAULT 'available'");
 addCol('tutors', 'status', "TEXT DEFAULT 'active'");
 addCol('tutors', 'warnings', 'INTEGER DEFAULT 0');
 addCol('tutors', 'photo', "TEXT DEFAULT ''");
+addCol('users', 'username', 'TEXT');
+addCol('subject_requests', 'notified', 'INTEGER DEFAULT 0');
 addCol('ratings', 'reply', "TEXT DEFAULT ''");
 addCol('ratings', 'reply_at', 'TEXT');
 db.exec(`
@@ -86,6 +94,10 @@ CREATE TABLE IF NOT EXISTS visits(day TEXT, tg_id TEXT, PRIMARY KEY(day, tg_id))
 CREATE TABLE IF NOT EXISTS users(tg_id TEXT PRIMARY KEY, name TEXT, first_seen TEXT DEFAULT (datetime('now')), last_seen TEXT DEFAULT (datetime('now')), blocked INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS subject_requests(id TEXT PRIMARY KEY, created_at TEXT DEFAULT (datetime('now')), tg_id TEXT, who TEXT, subject TEXT, note TEXT DEFAULT '');
 CREATE TABLE IF NOT EXISTS tutor_edits(id TEXT PRIMARY KEY, created_at TEXT DEFAULT (datetime('now')), tutor_id TEXT UNIQUE REFERENCES tutors(id) ON DELETE CASCADE, tg_id TEXT, changes TEXT);
+CREATE TABLE IF NOT EXISTS enrollments(id TEXT PRIMARY KEY, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')),
+  tutor_id TEXT REFERENCES tutors(id) ON DELETE CASCADE, subject TEXT, tg_id TEXT, who TEXT, username TEXT DEFAULT '',
+  status TEXT DEFAULT 'pending', channel_added INTEGER DEFAULT 0, UNIQUE(tutor_id, subject, tg_id));
+CREATE TABLE IF NOT EXISTS bad_words(word TEXT PRIMARY KEY);
 CREATE INDEX IF NOT EXISTS ev_idx ON events(type, ts);
 `);
 const UPLOAD_DIR = path.join(path.dirname(DB_PATH), 'uploads');
@@ -129,30 +141,71 @@ function verifyInit(raw) {
   try {
     const u = JSON.parse(p.get('user'));
     const id = String(u.id);
-    return { id, name: [u.first_name, u.last_name].filter(Boolean).join(' ').trim() || 'طالب', isAdmin: ADMIN_IDS.has(id) };
+    return { id, name: [u.first_name, u.last_name].filter(Boolean).join(' ').trim() || 'طالب', username: u.username || '', isAdmin: ADMIN_IDS.has(id) };
   } catch { return null; }
 }
 const needUser = ctx => { if (!ctx.user) throw new HttpError(401, 'افتح المنصة من داخل تليجرام أولاً', 'auth'); return ctx.user; };
 const needAdmin = ctx => { const u = needUser(ctx); if (!u.isAdmin) throw new HttpError(403, 'غير مصرّح'); return u; };
 
 /* ---------- إشعارات تليجرام (اختياري، لا توقف الخادم لو فشلت) ---------- */
-async function tgSend(chatId, text) {
+async function tgCall(method, payload = {}, timeout = 15000) {
   try {
-    const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text })
-    });
-    return { ok: r.ok, blocked: r.status === 403 };
-  } catch { return { ok: false, blocked: false }; }
+    const r = await fetch(`${TG_API}/bot${BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(timeout) });
+    return await r.json().catch(() => ({ ok: false }));
+  } catch { return { ok: false, network: true }; }
 }
-function notify(chatId, text) { if (chatId) tgSend(chatId, text); }
+async function tgSend(chatId, text, markup) {
+  const r = await tgCall('sendMessage', { chat_id: chatId, text, ...(markup ? { reply_markup: markup } : {}) });
+  return { ok: !!r.ok, blocked: r.error_code === 403 };
+}
+function notify(chatId, text, markup) { if (chatId) tgSend(chatId, text, markup); }
+const kb = rows => ({ inline_keyboard: rows });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- تطبيع النص العربي + فلتر الكلمات المسيئة ---------- */
+const nzs = x => String(x ?? '').toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي').replace(/(.)\1+/g, '$1').trim();
+const tokensOf = x => nzs(x).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+const DEFAULT_BAD = ['كلب','كلاب','حمار','حمير','غبي','غبيه','اغبي','تافه','حقير','حقيره','قذر','قذره','وسخ','وسخه','زباله','خنزير','سافل','سافله','منحط','ملعون','يلعن','تيس','بقره','جحش','احمق','معفن','نذل','نذاله','عاهر','عاهره','شرموط','شرموطه','قحبه','قحاب','منيوك','طيز','نيك','ديوث','عرص','خرا','متخلف','معاق','زفت','بهيم','حثاله','واطي','وقح','كذاب','نصاب','حرامي','سارق','نصب','احتيال','fuck','shit','bitch'];
+let BAD_SET = new Set();
+function loadBad() { BAD_SET = new Set([...DEFAULT_BAD, ...all('SELECT word FROM bad_words').map(r => r.word)].map(nzs)); }
+function dirty(text) {
+  for (const t of tokensOf(text)) {
+    if (BAD_SET.has(t)) return true;
+    const stripped = t.replace(/^(?:وال|بال|لل|فال|كال|ال|و|ف|ب|ل|ك)/, '');
+    if (stripped.length >= 2 && BAD_SET.has(stripped)) return true;
+  }
+  return false;
+}
+const clean = text => { if (dirty(text)) throw bad('يحتوي نصك على ألفاظ غير لائقة، عدّله وأعد المحاولة'); return text; };
 
 /* ---------- التحقق من البيانات ---------- */
 const str = (v, max) => String(v ?? '').trim().slice(0, max);
 function parseTg(v) {
   v = String(v || '').trim().replace(/^https?:\/\//i, '').replace(/^(www\.)?(t|telegram)\.me\//i, '').replace(/^@/, '').split(/[\/?#]/)[0];
   return /^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(v) ? v : null;
+}
+function parseChannel(v) {
+  v = String(v || '').trim(); if (!v) return '';
+  v = v.replace(/^@/, 't.me/').replace(/^https?:\/\//i, '').replace(/^(www\.)?(telegram\.me|t\.me)\//i, 't.me/');
+  const m = v.match(/^t\.me\/([A-Za-z][A-Za-z0-9_]{4,31})(\/\d+)?\/?$/);
+  return m ? 'https://t.me/' + m[1] + (m[2] || '') : null;
+}
+const chanCache = new Map();
+async function verifyChannels(subjectsJson) {
+  const names = new Set();
+  for (const s of JSON.parse(subjectsJson || '[]')) { const m = (s.trial || '').match(/^https:\/\/t\.me\/([A-Za-z0-9_]+)/); if (m) names.add(m[1]); }
+  for (const n of names) {
+    const hit = chanCache.get(n);
+    let okc = hit && Date.now() - hit.t < 3600_000 ? hit.ok : undefined;
+    if (okc === undefined) {
+      const r = await tgCall('getChat', { chat_id: '@' + n }, 8000);
+      if (r.ok) okc = ['channel', 'supergroup'].includes(r.result?.type);
+      else if (r.error_code === 400) okc = false;
+      else okc = true;                                    // تعذّر التحقق (شبكة/ضغط) فلا نمنع
+      if (r.ok || r.error_code === 400) chanCache.set(n, { ok: okc, t: Date.now() });
+    }
+    if (!okc) throw bad(`الرابط t.me/${n} ليس قناة عامة. استخدم رابط قناة عامة (وليس رابط دعوة خاص أو حساب شخص)`);
+  }
 }
 function cleanTutor(b) {
   const name = str(b.name, 80).replace(/\s+/g, ' ');
@@ -170,8 +223,8 @@ function cleanTutor(b) {
     if (!n) throw bad('اسم المادة مطلوب');
     if (!targets) throw bad('اكتب الطلاب المستهدفين لمادة: ' + n);
     if (!/^\d{1,6}$/.test(price) || +price <= 0) throw bad('سعر غير صحيح لمادة: ' + n);
-    let trial = str(s.trial, 300);
-    if (trial && !/^https?:\/\/[^\s.]+\.[^\s]+$/i.test(trial)) throw bad('رابط الشرح التجريبي غير صحيح لمادة: ' + n);
+    const trial = parseChannel(s.trial);
+    if (trial === null) throw bad('رابط الشرح التجريبي لازم يكون رابط قناة تليجرام عامة يبدأ بـ t.me (مثال: t.me/channel) لمادة: ' + n);
     return { name: n, targets, price, trial };
   });
   return { name, nationality, age, gender: b.gender, whatsapp, telegram: 'https://t.me/' + u, subjects: JSON.stringify(subjects) };
@@ -189,11 +242,14 @@ route('GET', '/api/bootstrap', ctx => {
     run(`INSERT INTO users(tg_id,name) VALUES(?,?) ON CONFLICT(tg_id) DO UPDATE SET name=excluded.name,last_seen=datetime('now'),blocked=0`, u.id, u.name);
     run(`INSERT OR IGNORE INTO visits(day,tg_id) VALUES(date('now'),?)`, u.id);
     tutorId = get(`SELECT id FROM tutors WHERE tg_id=? AND status='active'`, u.id)?.id || null;
+    run('UPDATE users SET username=? WHERE tg_id=?', u.username || '', u.id);
     favorites = all('SELECT tutor_id FROM favorites WHERE tg_id=?', u.id).map(x => x.tutor_id);
   }
   const badges = computeBadges();
   return {
-    me: { authed: !!u, id: u?.id || null, name: u?.name || null, isAdmin: !!u?.isAdmin, tutorId, favorites },
+    me: { authed: !!u, id: u?.id || null, name: u?.name || null, isAdmin: !!u?.isAdmin, tutorId, favorites,
+      enrollments: u ? all(`SELECT e.id,e.tutor_id,e.subject,e.status,e.channel_added,e.created_at,t.name tutor_name FROM enrollments e JOIN tutors t ON t.id=e.tutor_id WHERE e.tg_id=? ORDER BY e.created_at DESC`, u.id) : [],
+      tutorEnrollments: tutorId ? all(`SELECT id,subject,who,username,tg_id,status,channel_added,created_at FROM enrollments WHERE tutor_id=? ORDER BY created_at DESC`, tutorId) : [] },
     config: { appLink: APP_LINK },
     tutors: all(`SELECT * FROM tutors WHERE status='active' ORDER BY created_at`).map(r => ({ ...pubTutor(r), badges: badges[r.id] || [] })),
     ratings: all(`SELECT r.id,r.tutor_id,r.tg_id,r.who,r.score,r.explain,r.style,r.coop,r.comment,r.reply,r.reply_at,r.created_at
@@ -204,8 +260,8 @@ route('GET', '/api/bootstrap', ctx => {
 });
 
 // طلب تسجيل خصوصي
-route('POST', '/api/requests', ctx => {
-  const u = needUser(ctx), t = cleanTutor(ctx.body);
+route('POST', '/api/requests', async ctx => {
+  const u = needUser(ctx), t = cleanTutor(ctx.body); await verifyChannels(t.subjects);
   if (get('SELECT COUNT(*) c FROM requests WHERE tg_id=?', u.id).c >= 3) throw bad('لديك طلبات قيد المراجعة، انتظر رد الإدارة');
   run(`INSERT INTO requests(id,tg_id,name,nationality,age,gender,whatsapp,telegram,subjects,pledge) VALUES(?,?,?,?,?,?,?,?,?,1)`,
     uuid(), u.id, t.name, t.nationality, t.age, t.gender, t.whatsapp, t.telegram, t.subjects);
@@ -217,6 +273,9 @@ route('POST', '/api/requests', ctx => {
 route('POST', '/api/ratings', ctx => {
   const u = needUser(ctx), b = ctx.body;
   if (!get('SELECT 1 x FROM tutors WHERE id=?', String(b.tutor_id))) throw new HttpError(404, 'الخصوصي غير موجود');
+  if (!get(`SELECT 1 x FROM enrollments WHERE tutor_id=? AND tg_id=? AND status='accepted'`, String(b.tutor_id), u.id))
+    throw new HttpError(403, 'تقدر تقيّم الخصوصي بعد ما يقبل تسجيلك عنده', 'not_enrolled');
+  clean(String(b.comment || ''));
   const v = {};
   for (const k of ['explain', 'style', 'coop']) { v[k] = +b[k]; if (!Number.isInteger(v[k]) || v[k] < 1 || v[k] > 100) throw bad('قيمة التقييم غير صحيحة'); }
   const score = Math.round((v.explain + v.style + v.coop) / 3);
@@ -256,6 +315,7 @@ route('POST', '/api/track', ctx => {
 route('POST', '/api/subject-requests', ctx => {
   const u = needUser(ctx), subject = str(ctx.body.subject, 80), note = str(ctx.body.note, 200);
   if (subject.length < 2) throw bad('اكتب اسم المادة');
+  clean(subject + ' ' + note);
   if (get(`SELECT COUNT(*) c FROM subject_requests WHERE tg_id=? AND created_at>=datetime('now','-1 day')`, u.id).c >= 5) throw bad('وصلت الحد اليومي لطلبات المواد');
   run('INSERT INTO subject_requests(id,tg_id,who,subject,note) VALUES(?,?,?,?,?)', uuid(), u.id, u.name, subject, note);
   return { ok: true };
@@ -267,8 +327,14 @@ route('POST', '/api/reports', ctx => {
   if (!get('SELECT 1 x FROM tutors WHERE id=?', tutorId)) throw new HttpError(404, 'الخصوصي غير موجود');
   if (kind === 'review' && !get('SELECT 1 x FROM ratings WHERE id=? AND tutor_id=?', ratingId, tutorId)) throw new HttpError(404, 'التقييم غير موجود');
   if (get(`SELECT 1 x FROM reports WHERE tg_id=? AND kind=? AND tutor_id=? AND COALESCE(rating_id,'')=COALESCE(?,'') AND status='open'`, u.id, kind, tutorId, ratingId)) throw new HttpError(409, 'سبق أن أرسلت بلاغاً وهو قيد المراجعة', 'pending');
-  run('INSERT INTO reports(id,tg_id,who,kind,tutor_id,rating_id,reason) VALUES(?,?,?,?,?,?,?)', uuid(), u.id, u.name, kind, tutorId, ratingId, reason);
-  for (const a of ADMIN_IDS) notify(a, `🚩 بلاغ جديد من ${u.name}`);
+  const rid = uuid();
+  run('INSERT INTO reports(id,tg_id,who,kind,tutor_id,rating_id,reason) VALUES(?,?,?,?,?,?,?)', rid, u.id, u.name, kind, tutorId, ratingId, reason);
+  const tn = get('SELECT name FROM tutors WHERE id=?', tutorId)?.name || '—';
+  let text = `🚩 شكوى على ${kind === 'review' ? 'تقييم لدى' : ''}الخصوصي ${tn}\nمن: ${u.name}\nالسبب: ${reason}`;
+  if (kind === 'review') { const rv = get('SELECT who,score,comment FROM ratings WHERE id=?', ratingId); if (rv) text += `\n\nالتقييم من ${rv.who} (${rv.score}/100): ${rv.comment || 'بدون تعليق'}`; }
+  const rows = [[{ text: '⚠️ إنذار', callback_data: `r:${rid}:warn` }, { text: '⛔ طرد', callback_data: `r:${rid}:expel` }], [{ text: 'تجاهل', callback_data: `r:${rid}:dismiss` }]];
+  if (kind === 'review') rows[1].push({ text: '🗑 حذف التقييم', callback_data: `r:${rid}:del` });
+  for (const a of ADMIN_IDS) notify(a, text, kb(rows));
   return { ok: true };
 });
 
@@ -318,15 +384,16 @@ function submitEdit(t, tgId, ch) {
   return true;
 }
 const pendingOf = tutorId => { const e = get('SELECT * FROM tutor_edits WHERE tutor_id=?', tutorId); return e ? JSON.parse(e.changes) : null; };
-route('PUT', '/api/me/tutor', ctx => {
+route('PUT', '/api/me/tutor', async ctx => {
   const t = myTutor(ctx), b = ctx.body, cur = parseSubjects(t);
   const availability = ['available', 'full'].includes(b.availability) ? b.availability : t.availability;
   if (availability !== t.availability) run('UPDATE tutors SET availability=? WHERE id=?', availability, t.id);   // حالة التوفر فورية
-  const clean = cleanTutor({ ...cur, whatsapp: b.whatsapp ?? cur.whatsapp, telegram: b.telegram ?? cur.telegram, subjects: b.subjects ?? cur.subjects });
-  const bio = str(b.bio ?? t.bio, 300), ch = {};
-  if (clean.whatsapp !== t.whatsapp) ch.whatsapp = clean.whatsapp;
-  if (clean.telegram !== t.telegram) ch.telegram = clean.telegram;
-  if (normSubs(clean.subjects) !== normSubs(t.subjects)) ch.subjects = clean.subjects;
+  const ct = cleanTutor({ ...cur, whatsapp: b.whatsapp ?? cur.whatsapp, telegram: b.telegram ?? cur.telegram, subjects: b.subjects ?? cur.subjects });
+  const bio = clean(str(b.bio ?? t.bio, 300)), ch = {};
+  if (normSubs(ct.subjects) !== normSubs(t.subjects)) await verifyChannels(ct.subjects);
+  if (ct.whatsapp !== t.whatsapp) ch.whatsapp = ct.whatsapp;
+  if (ct.telegram !== t.telegram) ch.telegram = ct.telegram;
+  if (normSubs(ct.subjects) !== normSubs(t.subjects)) ch.subjects = ct.subjects;
   if (bio !== (t.bio || '')) ch.bio = bio;
   const old = pendingOf(t.id); if (old && old.photo) ch.photo = old.photo;     // لا نضيّع صورة معلّقة
   return { ok: true, pending: submitEdit(t, ctx.user.id, ch) };
@@ -339,7 +406,7 @@ route('POST', '/api/me/tutor/photo', ctx => {
 route('POST', '/api/me/replies', ctx => {
   const t = myTutor(ctx), r = get('SELECT * FROM ratings WHERE id=? AND tutor_id=?', String(ctx.body.rating_id || ''), t.id);
   if (!r) throw new HttpError(404, 'التقييم غير موجود');
-  const reply = str(ctx.body.reply, 400); if (!reply) throw bad('اكتب الرد');
+  const reply = clean(str(ctx.body.reply, 400)); if (!reply) throw bad('اكتب الرد');
   run(`UPDATE ratings SET reply=?,reply_at=datetime('now') WHERE id=?`, reply, r.id);
   notify(r.tg_id, `💬 ردّ الخصوصي ${t.name} على تقييمك:\n${reply}`);
   return { ok: true };
@@ -363,6 +430,8 @@ route('GET', '/api/admin/data', ctx => {
     tutors: all('SELECT * FROM tutors ORDER BY created_at').map(adminTutor),
     reports: all(`SELECT p.id,p.created_at,p.who,p.kind,p.tutor_id,p.rating_id,p.reason,t.name tutor_name,r.comment,r.who rater,r.score
                   FROM reports p LEFT JOIN tutors t ON t.id=p.tutor_id LEFT JOIN ratings r ON r.id=p.rating_id WHERE p.status='open' ORDER BY p.created_at`),
+    enrollments: all(`SELECT e.id,e.subject,e.who,e.username,e.status,e.channel_added,e.created_at,t.name tutor_name,t.tg_id tutor_tg FROM enrollments e JOIN tutors t ON t.id=e.tutor_id ORDER BY e.created_at DESC LIMIT 300`),
+    badWords: all('SELECT word FROM bad_words').map(r => r.word),
     tutorEdits: all(`SELECT e.id,e.created_at,e.tutor_id,e.changes,t.name,t.whatsapp,t.telegram,t.subjects,t.bio,t.photo FROM tutor_edits e JOIN tutors t ON t.id=e.tutor_id ORDER BY e.created_at`).map(r => {
       const c = JSON.parse(r.changes); if (c.subjects) c.subjects = JSON.parse(c.subjects);
       return { id: r.id, created_at: r.created_at, tutor_id: r.tutor_id, name: r.name, changes: c,
@@ -371,21 +440,29 @@ route('GET', '/api/admin/data', ctx => {
     subjectRequests: all(`SELECT MIN(subject) subject, COUNT(*) n, MAX(created_at) last FROM subject_requests GROUP BY LOWER(TRIM(subject)) ORDER BY n DESC, last DESC`)
   };
 });
-const cleanTgId = v => { v = String(v ?? '').trim(); if (v && !/^\d{3,15}$/.test(v)) throw bad('آيدي تليجرام يجب أن يكون أرقاماً'); return v || null; };
-route('POST', '/api/admin/tutors', ctx => {
-  needAdmin(ctx); const t = cleanTutor(ctx.body), rating = Math.max(0, Math.min(100, +ctx.body.rating || 0)), tgid = cleanTgId(ctx.body.tg_id);
+// يقبل الأرقام العربية (٠-٩) والفارسية وأي مسافات أو رموز اتجاه خفية يضيفها كيبورد الآيباد/الجوال
+const toAsciiDigits = x => String(x ?? '').replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x660).replace(/[\u06F0-\u06F9]/g, d => d.charCodeAt(0) - 0x6F0);
+const cleanTgId = v => {
+  v = toAsciiDigits(v).replace(/[\s\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff,،٬]/g, '');
+  if (v && !/^\d{3,15}$/.test(v)) throw bad('اكتب آيدي تليجرام أرقاماً فقط (تعرفه من بوت @userinfobot)');
+  return v || null;
+};
+route('POST', '/api/admin/tutors', async ctx => {
+  needAdmin(ctx); const t = cleanTutor(ctx.body); await verifyChannels(t.subjects); const _t = t, rating = Math.max(0, Math.min(100, +ctx.body.rating || 0)), tgid = cleanTgId(ctx.body.tg_id);
   const id = uuid();
   run('INSERT INTO tutors(id,name,nationality,age,gender,whatsapp,telegram,subjects,rating,pledge,tg_id) VALUES(?,?,?,?,?,?,?,?,?,1,?)',
     id, t.name, t.nationality, t.age, t.gender, t.whatsapp, t.telegram, t.subjects, rating, tgid);
   if (ctx.body.image) savePhoto(id, ctx.body.image);
+  notifySubjectMatches(id);
   return { ok: true };
 });
-route('PUT', '/api/admin/tutors/:id', ctx => {
-  needAdmin(ctx); const t = cleanTutor(ctx.body), rating = Math.max(0, Math.min(100, +ctx.body.rating || 0));
+route('PUT', '/api/admin/tutors/:id', async ctx => {
+  needAdmin(ctx); const t = cleanTutor(ctx.body); await verifyChannels(t.subjects); const _t = t, rating = Math.max(0, Math.min(100, +ctx.body.rating || 0));
   const tgid = cleanTgId(ctx.body.tg_id);
   run('UPDATE tutors SET name=?,nationality=?,age=?,gender=?,whatsapp=?,telegram=?,subjects=?,rating=?,tg_id=? WHERE id=?',
     t.name, t.nationality, t.age, t.gender, t.whatsapp, t.telegram, t.subjects, rating, tgid, ctx.params.id);
   if (ctx.body.image) savePhoto(ctx.params.id, ctx.body.image);
+  notifySubjectMatches(ctx.params.id);
   return { ok: true };
 });
 route('POST', '/api/admin/tutors/:id/verify', ctx => { needAdmin(ctx); run('UPDATE tutors SET verified=? WHERE id=?', ctx.body.verified ? 1 : 0, ctx.params.id); return { ok: true }; });
@@ -404,12 +481,14 @@ route('DELETE', '/api/admin/tutors/:id', ctx => { needAdmin(ctx); run('DELETE FR
 route('POST', '/api/admin/requests/:id/approve', ctx => {
   needAdmin(ctx);
   const r = get('SELECT * FROM requests WHERE id=?', ctx.params.id); if (!r) throw new HttpError(404, 'الطلب غير موجود');
+  const nid = uuid();
   tx(() => {
     run('INSERT INTO tutors(id,name,nationality,age,gender,whatsapp,telegram,subjects,rating,pledge,verified,tg_id) VALUES(?,?,?,?,?,?,?,?,0,?,0,?)',
-      uuid(), r.name, r.nationality, r.age, r.gender, r.whatsapp, r.telegram, r.subjects, r.pledge, r.tg_id);
+      nid, r.name, r.nationality, r.age, r.gender, r.whatsapp, r.telegram, r.subjects, r.pledge, r.tg_id);
     run('DELETE FROM requests WHERE id=?', r.id);
   });
   notify(r.tg_id, '✅ تم قبول طلبك، أصبحت ضمن قائمة الخصوصيين في المنصة. بالتوفيق!');
+  notifySubjectMatches(nid);
   return { ok: true };
 });
 route('DELETE', '/api/admin/requests/:id', ctx => {
@@ -435,7 +514,7 @@ route('DELETE', '/api/admin/terms/:id', ctx => { needAdmin(ctx); run('DELETE FRO
 route('GET', '/api/admin/backup', ctx => {
   needAdmin(ctx);
   return { exported_at: new Date().toISOString(), tutors: all('SELECT * FROM tutors').map(parseSubjects), requests: all('SELECT * FROM requests').map(parseSubjects),
-    ratings: all('SELECT * FROM ratings'), rating_edits: all('SELECT * FROM rating_edits'), terms: all('SELECT * FROM terms'), favorites: all('SELECT * FROM favorites'), tutor_edits: all('SELECT * FROM tutor_edits'), subject_requests: all('SELECT * FROM subject_requests') };
+    ratings: all('SELECT * FROM ratings'), rating_edits: all('SELECT * FROM rating_edits'), terms: all('SELECT * FROM terms'), favorites: all('SELECT * FROM favorites'), enrollments: all('SELECT * FROM enrollments'), tutor_edits: all('SELECT * FROM tutor_edits'), subject_requests: all('SELECT * FROM subject_requests') };
 });
 route('POST', '/api/admin/tutor-edits/:id/approve', ctx => {
   needAdmin(ctx);
@@ -449,6 +528,7 @@ route('POST', '/api/admin/tutor-edits/:id/approve', ctx => {
     run('DELETE FROM tutor_edits WHERE id=?', e.id);
   });
   notify(e.tg_id, '✅ تمت الموافقة على تعديلاتك وتم تطبيقها على حسابك.');
+  if (ch.subjects) notifySubjectMatches(e.tutor_id);
   return { ok: true };
 });
 route('POST', '/api/admin/tutor-edits/:id/reject', ctx => {
@@ -459,16 +539,25 @@ route('POST', '/api/admin/tutor-edits/:id/reject', ctx => {
   notify(e.tg_id, '❌ لم تتم الموافقة على تعديلاتك.' + (reason ? '\nالسبب: ' + reason : ''));
   return { ok: true };
 });
-route('POST', '/api/admin/reports/:id/resolve', ctx => {
-  needAdmin(ctx);
-  const p = get('SELECT * FROM reports WHERE id=?', ctx.params.id); if (!p) throw new HttpError(404, 'البلاغ غير موجود');
-  const action = String(ctx.body.action || '');
-  if (action === 'delete_review' && p.rating_id) run('DELETE FROM ratings WHERE id=?', p.rating_id);
+function expelTutor(id, reason) {
+  const t = get('SELECT * FROM tutors WHERE id=?', id); if (!t) throw new HttpError(404, 'الخصوصي غير موجود');
+  run(`UPDATE tutors SET status='removed' WHERE id=?`, id);
+  run('INSERT INTO warnings_log(id,tutor_id,reason) VALUES(?,?,?)', uuid(), id, '[طرد] ' + reason);
+  notify(t.tg_id, `⛔ تم إلغاؤك من قائمة الخصوصيين.\nالسبب: ${reason}`);
+}
+function applyReport(id, action) {
+  const p = get('SELECT * FROM reports WHERE id=?', id); if (!p) throw new HttpError(404, 'البلاغ غير موجود');
+  if (p.status !== 'open') throw bad('تمت معالجة هذا البلاغ مسبقاً');
+  if (action === 'delete_review') { if (p.rating_id) run('DELETE FROM ratings WHERE id=?', p.rating_id); }
   else if (action === 'warn') warnTutor(p.tutor_id, str(p.reason, 300));
+  else if (action === 'expel') expelTutor(p.tutor_id, str(p.reason, 300));
   else if (action !== 'dismiss') throw bad('إجراء غير معروف');
   run(`UPDATE reports SET status='done' WHERE id=?`, p.id);
-  return { ok: true };
-});
+}
+route('POST', '/api/admin/reports/:id/resolve', ctx => { needAdmin(ctx); applyReport(ctx.params.id, String(ctx.body.action || '')); return { ok: true }; });
+route('POST', '/api/admin/tutors/:id/expel', ctx => { needAdmin(ctx); const r = str(ctx.body.reason, 300); if (r.length < 3) throw bad('اكتب سبب الإلغاء'); expelTutor(ctx.params.id, r); return { ok: true }; });
+route('POST', '/api/admin/badwords', ctx => { needAdmin(ctx); const w = str(ctx.body.word, 40); if (w.length < 2) throw bad('اكتب الكلمة'); run('INSERT OR IGNORE INTO bad_words(word) VALUES(?)', w); loadBad(); return { ok: true }; });
+route('POST', '/api/admin/badwords/remove', ctx => { needAdmin(ctx); run('DELETE FROM bad_words WHERE word=?', String(ctx.body.word || '')); loadBad(); return { ok: true }; });
 route('GET', '/api/admin/stats', ctx => {
   needAdmin(ctx);
   const c = (sql, ...a) => get(sql, ...a).c;
@@ -560,6 +649,156 @@ const server = http.createServer(async (req, res) => {
     console.error(e); json(res, 500, { error: 'خطأ في الخادم' });
   }
 });
+/* ---------- تنبيه المواد المطلوبة ---------- */
+const b64u = x => Buffer.from(String(x), 'utf8').toString('base64url');
+function appMarkup(kind, val) {
+  if (!PUBLIC_URL) return undefined;
+  return kb([[{ text: '🎓 افتح المنصة', web_app: { url: `${PUBLIC_URL}/?${kind}=${encodeURIComponent(val)}` } }]]);
+}
+function notifySubjectMatches(tutorId) {
+  const t = get('SELECT * FROM tutors WHERE id=?', tutorId); if (!t || t.status !== 'active') return;
+  const subs = JSON.parse(t.subjects || '[]').map(x => ({ raw: x.name.trim(), n: nzs(x.name) })).filter(x => x.n.length >= 2);
+  if (!subs.length) return;
+  for (const r of all('SELECT * FROM subject_requests WHERE notified=0')) {
+    const n = nzs(r.subject); if (n.length < 2) continue;
+    const m = subs.find(x => x.n === n || (n.length >= 3 && x.n.includes(n)) || (x.n.length >= 3 && n.includes(x.n)));
+    if (!m) continue;
+    run('UPDATE subject_requests SET notified=1 WHERE id=?', r.id);
+    notify(r.tg_id, `📚 توفّرت المادة اللي طلبتها «${r.subject}»!\nالخصوصي ${t.name} يشرح ${m.raw} الحين.`, appMarkup('s', m.raw));
+  }
+}
+
+/* ---------- التسجيل عند الخصوصي (طالب ← خصوصي) ---------- */
+const STATUS_AR = { pending: 'بانتظار القبول', accepted: 'تم القبول', rejected: 'مرفوض', cancelled: 'ملغي' };
+const getEnr = id => get(`SELECT e.*, t.name tutor_name, t.tg_id tutor_tg FROM enrollments e JOIN tutors t ON t.id=e.tutor_id WHERE e.id=?`, id);
+const who = e => e.username ? `${e.who} (@${e.username})` : `${e.who} (آيدي ${e.tg_id})`;
+route('POST', '/api/enrollments', ctx => {
+  const u = needUser(ctx), b = ctx.body;
+  const t = get(`SELECT * FROM tutors WHERE id=? AND status='active'`, String(b.tutor_id || '')); if (!t) throw new HttpError(404, 'الخصوصي غير موجود');
+  if (t.tg_id && t.tg_id === u.id) throw bad('لا يمكنك التسجيل عند نفسك');
+  if (t.availability === 'full') throw bad('هذا الخصوصي ممتلئ حالياً');
+  const subject = String(b.subject || '').trim();
+  if (!JSON.parse(t.subjects || '[]').some(x => x.name.trim() === subject)) throw bad('المادة غير موجودة عند هذا الخصوصي');
+  const ex = get('SELECT * FROM enrollments WHERE tutor_id=? AND subject=? AND tg_id=?', t.id, subject, u.id);
+  if (ex && ['pending', 'accepted'].includes(ex.status)) throw new HttpError(409, 'سبق أن سجّلت في هذه المادة', 'exists');
+  if (get(`SELECT COUNT(*) c FROM enrollments WHERE tg_id=? AND status='pending'`, u.id).c >= 10) throw bad('لديك طلبات تسجيل كثيرة قيد الانتظار');
+  const id = ex ? ex.id : uuid();
+  if (ex) run(`UPDATE enrollments SET status='pending',channel_added=0,username=?,who=?,updated_at=datetime('now') WHERE id=?`, u.username || '', u.name, id);
+  else run('INSERT INTO enrollments(id,tutor_id,subject,tg_id,who,username) VALUES(?,?,?,?,?,?)', id, t.id, subject, u.id, u.name, u.username || '');
+  const e = getEnr(id), acts = kb([[{ text: '✅ قبول', callback_data: `e:${id}:acc` }, { text: '❌ رفض', callback_data: `e:${id}:rej` }]]);
+  notify(t.tg_id, `📥 طالب جديد سجّل عندك\nالطالب: ${who(e)}\nالمادة: ${subject}`, acts);
+  for (const a of ADMIN_IDS) notify(a, `📝 الطالب ${who(e)} سجّل عند الخصوصي ${t.name}\nالمادة: ${subject}\nالحالة: ${STATUS_AR.pending}${t.tg_id ? '' : '\n(هذا الخصوصي غير مربوط بحساب تليجرام، قرّر أنت)'}`, t.tg_id ? undefined : acts);
+  return { ok: true };
+});
+route('POST', '/api/enrollments/:id/cancel', ctx => {
+  const u = needUser(ctx), e = getEnr(ctx.params.id);
+  if (!e || e.tg_id !== u.id) throw new HttpError(404, 'غير موجود');
+  if (e.status !== 'pending') throw bad('لا يمكن إلغاء هذا التسجيل');
+  run(`UPDATE enrollments SET status='cancelled',updated_at=datetime('now') WHERE id=?`, e.id); return { ok: true };
+});
+function respondEnrollment(e, act) {
+  if (e.status !== 'pending') throw bad('تمت معالجة هذا الطلب مسبقاً');
+  const acc = act === 'acc';
+  run(`UPDATE enrollments SET status=?,channel_added=0,updated_at=datetime('now') WHERE id=?`, acc ? 'accepted' : 'rejected', e.id);
+  notify(e.tg_id, acc ? `✅ قبل الخصوصي ${e.tutor_name} تسجيلك في مادة ${e.subject}.\nسيضيفك إلى قناة الشرح، ويمكنك الآن تقييمه من المنصة.` : `❌ اعتذر الخصوصي ${e.tutor_name} عن قبول تسجيلك في مادة ${e.subject}.`);
+  for (const a of ADMIN_IDS) notify(a, `📋 الخصوصي ${e.tutor_name} ${acc ? 'قبل' : 'رفض'} تسجيل الطالب ${who(e)} (${e.subject})`);
+  if (acc) notify(e.tutor_tg, `هل أضفت الطالب ${who(e)} إلى قناة الشرح (${e.subject})؟`, kb([[{ text: '✅ أضفته', callback_data: `e:${e.id}:ch1` }, { text: '⏳ لم أضفه بعد', callback_data: `e:${e.id}:ch0` }]]));
+}
+function respondChannel(e, added) {
+  if (e.status !== 'accepted') throw bad('يجب قبول التسجيل أولاً');
+  run(`UPDATE enrollments SET channel_added=?,updated_at=datetime('now') WHERE id=?`, added ? 1 : 0, e.id);
+  if (added && !e.channel_added) {
+    notify(e.tg_id, `📢 تمت إضافتك إلى قناة الشرح لمادة ${e.subject} عند الخصوصي ${e.tutor_name}.`);
+    for (const a of ADMIN_IDS) notify(a, `📢 الخصوصي ${e.tutor_name} أضاف الطالب ${who(e)} إلى قناة الشرح (${e.subject})`);
+  }
+}
+const myEnr = ctx => { const t = myTutor(ctx), e = getEnr(ctx.params.id); if (!e || e.tutor_id !== t.id) throw new HttpError(404, 'غير موجود'); return e; };
+route('POST', '/api/me/enrollments/:id/respond', ctx => { respondEnrollment(myEnr(ctx), ctx.body.action === 'accept' ? 'acc' : 'rej'); return { ok: true }; });
+route('POST', '/api/me/enrollments/:id/channel', ctx => { respondChannel(myEnr(ctx), !!ctx.body.added); return { ok: true }; });
+route('POST', '/api/admin/enrollments/:id/respond', ctx => {
+  needAdmin(ctx); const e = getEnr(ctx.params.id); if (!e) throw new HttpError(404, 'غير موجود');
+  respondEnrollment(e, ctx.body.action === 'accept' ? 'acc' : 'rej'); return { ok: true };
+});
+
+/* ---------- بوت تليجرام: أزرار الإدارة + فتح المنصة من كلمة «خصوصي» ---------- */
+const STOP = new Set(['ابغى','ابي','ابى','مين','منو','عندكم','عندك','عند','في','فى','لو','سمحت','ممكن','يشرح','يشرحلي','يشرحون','شرح','مادة','لمادة','للمادة','من','على','عن','هل','ايش','وش','يوجد','فيه','احد','احتاج','ابحث','دور','دورلي','ودي','تكفون','تكفى','الله','يعطيكم','العافيه','مساء','صباح','الخير','السلام','عليكم','ورحمه','وبركاته','طلب','مطلوب','الي','اللي','يعرف','يعرفون','حد','فضلا','لي','لنا','لكم','ما','او','أو','و','مع','الى','إلى','هذا','هذي','ابغي','بغيت','محتاج','محتاجه','يوجد','يا','شباب','ياشباب','يالشباب','جماعه','ياجماعه','يالجماعه','اخوان','اخواني','ياخوان','لاهنتوا','لاهنتم','يحفظكم','يرحم','والديكم','والدينا','بليز','pls','please','تكفون','اخوي','يا اخوان','طلاب','الطلاب'].map(nzs));
+const stripAl = t => t.replace(/^(?:وال|بال|ال)/, '');
+function detectIntent(text) {
+  const raw = text.split(/[^\p{L}\p{N}]+/u).filter(Boolean), nt = raw.map(nzs);
+  if (!nt.some(t => stripAl(t).startsWith('خصوصي'))) return null;
+  const norm = nzs(text); let best = '';
+  for (const r of all(`SELECT subjects FROM tutors WHERE status='active'`)) for (const sb of JSON.parse(r.subjects || '[]')) {
+    const n = nzs(sb.name); if (n.length >= 3 && norm.includes(n) && sb.name.trim().length > best.length) best = sb.name.trim();
+  }
+  if (best) return { subject: best };
+  const left = raw.filter((w, i) => { const t = nt[i]; return !stripAl(t).startsWith('خصوصي') && !STOP.has(t) && !STOP.has(stripAl(t)) && !/^\d+$/.test(t) && t.length >= 2; }).slice(0, 5).join(' ').slice(0, 40);
+  return left ? { q: left } : {};
+}
+function groupLink(prefix, val) {
+  if (APP_LINK) return `${APP_LINK}${APP_LINK.includes('?') ? '&' : '?'}startapp=${prefix}_${b64u(val)}`;
+  return BOT_USERNAME ? `https://t.me/${BOT_USERNAME}` : '';
+}
+function openMarkup(it, priv) {
+  const label = '🎓 افتح المنصة' + (it.subject ? ' — ' + it.subject : it.q ? ' — ' + it.q : '');
+  if (priv && PUBLIC_URL) return kb([[{ text: label, web_app: { url: `${PUBLIC_URL}/${it.subject ? '?s=' + encodeURIComponent(it.subject) : it.q ? '?q=' + encodeURIComponent(it.q) : ''}` } }]]);
+  const link = it.subject ? groupLink('s', it.subject) : it.q ? groupLink('q', it.q) : groupLink('h', '1');
+  return link ? kb([[{ text: label, url: link }]]) : undefined;
+}
+const throttle = new Map();
+async function handleMessage(m) {
+  if (!m || !m.text || !m.from || m.from.is_bot) return;
+  const text = m.text.trim(), priv = m.chat.type === 'private';
+  if (priv) run(`INSERT INTO users(tg_id,name,username) VALUES(?,?,?) ON CONFLICT(tg_id) DO UPDATE SET name=excluded.name,username=excluded.username,last_seen=datetime('now'),blocked=0`,
+    String(m.from.id), [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') || 'طالب', m.from.username || '');
+  if (/^\/start\b/.test(text)) {
+    if (priv) await tgCall('sendMessage', { chat_id: m.chat.id, text: 'أهلاً بك في منصة الخصوصيين 🎓\nاضغط الزر لفتح المنصة، أو اكتب «خصوصي + اسم المادة» وأفتحها لك مباشرة.', ...(openMarkup({}, true) ? { reply_markup: openMarkup({}, true) } : {}) });
+    return;
+  }
+  if (text.startsWith('/')) return;
+  const it = detectIntent(text); if (!it) return;
+  const key = m.chat.id + ':' + m.from.id, now = Date.now();
+  if (now - (throttle.get(key) || 0) < 45_000) return;
+  throttle.set(key, now);
+  const reply = it.subject ? `لقيت لك خصوصيين في «${it.subject}» 👇` : it.q ? `ابحث عن «${it.q}» في المنصة 👇` : 'تبي خصوصي؟ تصفّح الخصوصيين المعتمدين 👇';
+  const markup = openMarkup(it, priv);
+  await tgCall('sendMessage', { chat_id: m.chat.id, text: reply, ...(markup ? { reply_markup: markup } : {}), ...(priv ? {} : { reply_to_message_id: m.message_id, allow_sending_without_reply: true }) });
+}
+async function handleCallback(cq) {
+  const actor = String(cq.from.id), isAdm = ADMIN_IDS.has(actor), [kind, id, act] = String(cq.data || '').split(':');
+  let note = '';
+  try {
+    if (kind === 'r') {
+      if (!isAdm) throw new Error('غير مصرّح');
+      const map = { warn: 'warn', expel: 'expel', dismiss: 'dismiss', del: 'delete_review' };
+      if (!map[act]) throw new Error('إجراء غير معروف');
+      applyReport(id, map[act]);
+      note = { warn: '⚠️ تم إنذار الخصوصي', expel: '⛔ تم طرد الخصوصي', dismiss: 'تم التجاهل', del: '🗑 تم حذف التقييم' }[act];
+    } else if (kind === 'e') {
+      const e = getEnr(id); if (!e) throw new Error('غير موجود');
+      if (!(isAdm || actor === e.tutor_tg)) throw new Error('غير مصرّح');
+      if (act === 'acc' || act === 'rej') { respondEnrollment(e, act); note = act === 'acc' ? '✅ تم قبول الطالب' : '❌ تم رفض الطالب'; }
+      else if (act === 'ch1' || act === 'ch0') { respondChannel(e, act === 'ch1'); note = act === 'ch1' ? '📢 تم تسجيل إضافته للقناة' : '⏳ سنذكّرك لاحقاً'; }
+      else throw new Error('إجراء غير معروف');
+    } else throw new Error('غير معروف');
+    await tgCall('answerCallbackQuery', { callback_query_id: cq.id, text: note });
+    if (cq.message) await tgCall('editMessageText', { chat_id: cq.message.chat.id, message_id: cq.message.message_id, text: (cq.message.text || '') + '\n\n✔ ' + note });
+  } catch (err) { await tgCall('answerCallbackQuery', { callback_query_id: cq.id, text: err.message || 'خطأ', show_alert: true }); }
+}
+async function startBot() {
+  const me = await tgCall('getMe'); if (me.ok) BOT_USERNAME = me.result.username || '';
+  await tgCall('deleteWebhook', {});
+  let offset = 0;
+  for (;;) {
+    const r = await tgCall('getUpdates', { offset, timeout: 25, allowed_updates: ['message', 'callback_query'] }, 40_000);
+    if (!r.ok) { await sleep(r.network ? 8000 : 4000); continue; }
+    for (const u of r.result) {
+      offset = u.update_id + 1;
+      try { if (u.callback_query) await handleCallback(u.callback_query); else if (u.message) await handleMessage(u.message); }
+      catch (e) { console.error('bot update failed', e.message); }
+    }
+  }
+}
+
 /* ---------- نسخ احتياطي تلقائي يومي ---------- */
 async function backup() {
   try {
@@ -573,12 +812,13 @@ async function backup() {
     if (BACKUP_TO_TELEGRAM) for (const a of ADMIN_IDS) {
       const fd = new FormData(); fd.append('chat_id', a); fd.append('caption', '💾 النسخة الاحتياطية اليومية');
       fd.append('document', new Blob([fs.readFileSync(f)]), name);
-      fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd }).catch(() => {});
+      fetch(`${TG_API}/bot${BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd }).catch(() => {});
     }
   } catch (e) { console.error('backup failed', e.message); }
 }
 setTimeout(backup, 10_000).unref();
 setInterval(backup, 6 * 3600_000).unref();
 
+loadBad();
+if (env.BOT_POLLING !== '0') startBot().catch(e => console.error('bot stopped', e.message));
 server.listen(PORT, () => console.log(`✅ المنصة تعمل على المنفذ ${PORT}`));
-
