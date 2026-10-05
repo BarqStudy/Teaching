@@ -68,21 +68,22 @@ button:active,.btn:active,[role=button]:active{transform:scale(.96)}
     <div class="w-14 h-14 chip text-2xl"><i class="fa-solid fa-book-open"></i></div>
   </div>
 
-  <div class="relative">
+  <div class="relative" id="homeSearch">
     <input id="search" oninput="doSearch(this.value)" placeholder="ابحث عن خصوصي أو مادة..." class="w-full p-4 pr-12 rounded-2xl bg-blue-600/15 border-2 border-blue-500/60 focus:outline-none text-sm font-bold">
     <span class="absolute right-4 top-4 ibtn !w-8 !h-8 !rounded-xl text-sm"><i class="fa-solid fa-magnifying-glass"></i></span>
   </div>
   <div id="results" class="space-y-2 max-h-72 overflow-y-auto"></div>
 
-  <button onclick="openList()" class="glass rounded-3xl p-6 text-right flex items-center justify-between hover:border-blue-500/50 transition">
+  <button onclick="openList()" id="tutBtn" class="glass rounded-3xl p-6 text-right flex items-center justify-between hover:border-blue-500/50 transition">
     <div><h3 class="font-black text-lg"><i class="fa-solid fa-chalkboard-user"></i> الخصوصيين</h3><p class="text-xs text-slate-400 mt-1">تصفّح جميع الخصوصيين المعتمدين</p></div>
     <span id="tutorCount" class="w-14 h-14 chip text-white font-black text-xl">0</span>
   </button>
 
   <button onclick="go('enr')" id="enrCard" style="display:none" class="glass p-4 rounded-2xl items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg" style="--c:#f59e0b"><i class="fa-solid fa-clipboard-check"></i></span><div class="flex-1"><h3 class="font-bold text-sm">تسجيلاتي</h3><p class="text-[11px] text-slate-400">تابع حالة تسجيلك عند الخصوصيين</p></div><span id="enrCount" class="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-black empty:hidden"></span></button>
+  <button onclick="go('enr')" id="finalCard" style="display:none" class="glass p-4 rounded-2xl items-center gap-3 text-right border border-amber-500/40"><span class="w-11 h-11 chip text-lg" style="--c:#f59e0b"><i class="fa-solid fa-calendar-check"></i></span><div class="flex-1"><h3 class="font-bold text-sm">انتهى الترم 📅</h3><p class="text-[11px] text-slate-400">قيّم خصوصيك تقييم نهاية الترم</p></div></button>
   <button onclick="go('students')" id="stuCard" style="display:none" class="glass p-4 rounded-2xl items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg" style="--c:#10b981"><i class="fa-solid fa-users"></i></span><div class="flex-1"><h3 class="font-bold text-sm">طلابي</h3><p class="text-[11px] text-slate-400">الطلاب المسجلون عندك وحالة الدفع</p></div><span id="stuCount" class="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-black empty:hidden"></span></button>
-  <button onclick="go('apply')" class="glass p-4 rounded-2xl flex items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg"><i class="fa-solid fa-pen-to-square"></i></span><div><h3 class="font-bold text-sm">طلب التسجيل كخصوصي</h3><p class="text-[11px] text-slate-400">سجّل بياناتك وموادك وأسعارك</p></div></button>
-  <button onclick="go('rate')" class="glass p-4 rounded-2xl flex items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg" style="--c:#10b981"><i class="fa-solid fa-star"></i></span><div><h3 class="font-bold text-sm">التقييمات</h3><p class="text-[11px] text-slate-400">شاهد آراء الطلاب وقيّم خصوصيك</p></div></button>
+  <button onclick="go('apply')" id="applyCard" class="glass p-4 rounded-2xl flex items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg"><i class="fa-solid fa-pen-to-square"></i></span><div><h3 class="font-bold text-sm">طلب التسجيل كخصوصي</h3><p class="text-[11px] text-slate-400">سجّل بياناتك وموادك وأسعارك</p></div></button>
+  <button onclick="go('rate')" id="rateCard" class="glass p-4 rounded-2xl flex items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg" style="--c:#10b981"><i class="fa-solid fa-star"></i></span><div><h3 class="font-bold text-sm">التقييمات</h3><p class="text-[11px] text-slate-400">شاهد آراء الطلاب وقيّم خصوصيك</p></div></button>
   <button onclick="go('dev')" class="glass p-4 rounded-2xl flex items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg"><i class="fa-solid fa-code"></i></span><div><h3 class="font-bold text-sm">المطور</h3><p class="text-[11px] text-slate-400">معلومات وتفاصيل المطور</p></div></button>
 </div></div>
 
@@ -164,6 +165,8 @@ button:active,.btn:active,[role=button]:active{transform:scale(.96)}
 <nav class="fixed bottom-4 left-4 right-4 max-w-md mx-auto glass p-2.5 flex justify-around z-40 rounded-3xl">
   <button onclick="go('home')" id="nav-home" class="nv on flex flex-col items-center gap-1 p-2 text-blue-500"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-house"></i></span><span class="text-[10px] font-bold">الرئيسية</span></button>
   <button onclick="go('rate')" id="nav-rate" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-star"></i></span><span class="text-[10px] font-bold">التقييمات</span></button>
+  <button onclick="go('students')" id="nav-students" style="display:none" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-users"></i></span><span class="text-[10px] font-bold">طلابي</span></button>
+
   <button onclick="go('me')" id="nav-me" style="display:none" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-user-graduate"></i></span><span class="text-[10px] font-bold">حسابي</span></button>
   <button onclick="go('admin')" id="nav-admin" style="display:none" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-gear"></i></span><span class="text-[10px] font-bold">الإدارة</span></button>
 </nav>
@@ -183,7 +186,7 @@ const me={id:tu?String(tu.id):lsGet('gid',()=>'g'+Math.random().toString(36).sli
 let isAdmin=false,curPage='home';
 
 /* ===== الاتصال بالخادم ===== */
-let ENR=[],TENR=[],SUBJ='';
+let ENR=[],TENR=[],SUBJ='',PROFILE={},FINAL=new Set();
 let db={tutors:[],requests:[],terms:[],ratings:{},edits:[],adminTutors:[],reports:[],subjReqs:[],tutorEdits:[],enrolls:[],badWords:[]},CFG={appLink:''},FAV=new Set();
 async function api(method,url,body){
   const r=await fetch('/api'+url,{method,headers:{'Content-Type':'application/json','X-Tg-Init':(tg&&tg.initData)||''},body:body===undefined?undefined:JSON.stringify(body)});
@@ -194,9 +197,9 @@ async function api(method,url,body){
 async function loadAll(){
   try{
     const d=await api('GET','/bootstrap');
-    isAdmin=d.me.isAdmin;me.authed=d.me.authed;me.tutorId=d.me.tutorId;FAV=new Set(d.me.favorites||[]);ENR=d.me.enrollments||[];TENR=d.me.tutorEnrollments||[];CFG=d.config||CFG;
+    isAdmin=d.me.isAdmin;me.authed=d.me.authed;me.tutorId=d.me.tutorId;FAV=new Set(d.me.favorites||[]);ENR=d.me.enrollments||[];PROFILE=d.me.profile||{};FINAL=new Set(d.me.finalOpen||[]);TENR=d.me.tutorEnrollments||[];CFG=d.config||CFG;
     db.tutors=d.tutors;db.terms=d.terms;db.ratings={};
-    d.ratings.forEach(x=>(db.ratings[x.tutor_id]=db.ratings[x.tutor_id]||[]).push({id:x.id,mine:x.mine,who:x.who,score:x.score,text:x.comment,explain:x.explain,style:x.style,coop:x.coop,at:x.created_at,reply:x.reply,replyAt:x.reply_at}));
+    d.ratings.forEach(x=>(db.ratings[x.tutor_id]=db.ratings[x.tutor_id]||[]).push({id:x.id,mine:x.mine,who:x.who,score:x.score,text:x.comment,explain:x.explain,style:x.style,coop:x.coop,at:x.created_at,term:x.term||'',reply:x.reply,replyAt:x.reply_at}));
     db.requests=[];db.edits=[];db.adminTutors=[];db.reports=[];db.subjReqs=[];db.tutorEdits=[];db.enrolls=[];db.badWords=[];
     if(isAdmin){const a=await api('GET','/admin/data');Object.assign(db,{requests:a.requests,edits:a.edits,adminTutors:a.tutors,reports:a.reports,subjReqs:a.subjectRequests,tutorEdits:a.tutorEdits,enrolls:a.enrollments,badWords:a.badWords})}
   }catch(e){console.warn(e)}
@@ -262,11 +265,12 @@ const availChip=t=>t.availability==='full'?`<span class="px-2 py-0.5 rounded-ful
 function go(p){
   if(p==='admin'&&!isAdmin)return;
   if((p==='me'||p==='students')&&!me.tutorId)return;
+  if(me.tutorId&&['list','rate','apply','enr','subject'].includes(p))p='home';
   curPage=p;
   ['home','list','apply','rate','dev','admin','me','subject','enr','students'].forEach(x=>$('page-'+x).classList.add('hidden'));
   const el=$('page-'+p);el.classList.remove('hidden');el.querySelector('.scroll').scrollTo(0,0);
-  const cur=p==='admin'?'admin':p==='rate'?'rate':p==='me'?'me':'home';
-  ['home','rate','me','admin'].forEach(k=>$('nav-'+k).className='nv flex flex-col items-center gap-1 p-2 '+(k===cur?'on text-blue-500':'text-slate-400'));
+  const cur=p==='admin'?'admin':p==='rate'?'rate':p==='me'?'me':p==='students'?'students':'home';
+  ['home','rate','students','me','admin'].forEach(k=>$('nav-'+k).className='nv flex flex-col items-center gap-1 p-2 '+(k===cur?'on text-blue-500':'text-slate-400'));
   if(p==='home')renderHome();if(p==='list')renderList();if(p==='rate')renderRate();if(p==='apply')renderApply();if(p==='admin')renderAdmin();if(p==='me')renderMe();if(p==='subject')renderSubject();if(p==='enr')renderEnr();if(p==='students')renderStudents();
 }
 function toggleTheme(){const h=document.documentElement;const d=h.classList.contains('dark');h.classList.toggle('dark',!d);h.classList.toggle('light',d)}
@@ -275,9 +279,11 @@ function toggleTheme(){const h=document.documentElement;const d=h.classList.cont
 function renderHome(){
   $('welcome').textContent=me.name||'زائرنا الكريم';$('handle').textContent=me.handle;
   $('subjCount').textContent=allSubjects().length;$('tutorCount').textContent=db.tutors.length;$('devLink').href=DEV_TG;
-  $('enrCard').style.display=ENR.length?'flex':'none';$('enrCount').textContent=ENR.filter(e=>e.status==='pending').length||'';
+  const isT=!!me.tutorId;
+  ['homeSearch','tutBtn','applyCard','rateCard'].forEach(k=>$(k).style.display=isT?'none':'');$('results').innerHTML=isT?'':$('results').innerHTML;
+  $('enrCard').style.display=(!isT&&ENR.length)?'flex':'none';$('finalCard').style.display=(!isT&&FINAL.size)?'flex':'none';$('enrCount').textContent=ENR.filter(e=>e.status==='pending').length||'';
   $('stuCard').style.display=me.tutorId?'flex':'none';$('stuCount').textContent=TENR.filter(e=>e.status==='pending').length||'';
-  $('nav-admin').style.display=isAdmin?'flex':'none';$('nav-me').style.display=me.tutorId?'flex':'none';
+  $('nav-admin').style.display=isAdmin?'flex':'none';$('nav-me').style.display=me.tutorId?'flex':'none';$('nav-students').style.display=me.tutorId?'flex':'none';$('nav-rate').style.display=me.tutorId?'none':'flex';
 }
 function tutorRow(t,fn){
   const info=[t.gender,t.age?t.age+' سنة':''].filter(Boolean).join(' • ');
@@ -387,8 +393,9 @@ function openCard(id){
 function closeCard(){$('overlay').classList.add('hidden');$('overlay').classList.remove('flex')}
 function b64d(x){try{x=x.replace(/-/g,'+').replace(/_/g,'/');return new TextDecoder().decode(Uint8Array.from(atob(x),c=>c.charCodeAt(0)))}catch(e){return''}}
 function openDeepLink(){
+  if(me.tutorId)return;
   let P=new URLSearchParams(),sp=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param)||'';try{P=new URLSearchParams(location.search)}catch(e){}
-  let t=P.get('t'),sub=P.get('s'),q=P.get('q');
+  let t=P.get('t'),sub=P.get('s'),q=P.get('q');const rr=P.get('r');if(rr&&db.tutors.find(x=>x.id===rr)){openRate(rr);return}
   if(sp){if(/^t_/.test(sp))t=sp.slice(2);else if(/^s_/.test(sp))sub=b64d(sp.slice(2));else if(/^q_/.test(sp))q=b64d(sp.slice(2))}
   if(t&&db.tutors.find(x=>x.id===t)){openCard(t);return}
   if(sub){openSubject(sub);return}
@@ -420,25 +427,49 @@ function regBlock(t,i){
   if(t.availability==='full')return `<div class="rounded-xl bg-red-500/10 p-2.5 text-center text-[11px] font-bold text-red-500">ممتلئ هذا الترم</div>`;
   return `${e&&e.status==='rejected'?'<p class="text-[10px] text-red-500 text-center">لم يقبل الخصوصي تسجيلك السابق</p>':''}<button onclick="enroll('${t.id}',${i})" class="btn bg-blue-500 !py-3 text-sm"><i class="fa-solid fa-user-plus"></i> سجّل في هذه المادة</button>`;
 }
-async function enroll(id,i){
+function enroll(id,i){
   if(!me.authed)return alert('افتح المنصة من داخل تليجرام أولاً');
   const t=db.tutors.find(x=>x.id===id);if(!t)return;
-  try{await api('POST','/enrollments',{tutor_id:id,subject:t.subjects[i].name.trim()})}catch(e){return alert(e.message)}
+  const ph=PROFILE.phone?'0'+String(PROFILE.phone).replace(/^966/,''):'';
+  $('card').innerHTML=`<div class="glass tcard rounded-3xl p-6 space-y-3 pop">
+    <h3 class="font-black text-base">التسجيل في ${esc(t.subjects[i].name)}</h3>
+    <p class="text-[11px] text-slate-400 leading-relaxed">عند الخصوصي ${esc(t.name)}. اكتب اسمك الثلاثي ورقم جوالك ليتواصل معك.</p>
+    <input id="enName" class="inp" placeholder="الاسم الثلاثي" value="${esc(PROFILE.full_name||'')}">
+    <div class="flex gap-2 items-center" dir="ltr"><span class="shrink-0 px-3 py-[.7rem] rounded-xl bg-slate-500/20 text-xs font-bold">🇸🇦 +966</span><input id="enPh" class="inp" dir="ltr" inputmode="numeric" placeholder="05xxxxxxxx" value="${esc(ph)}"></div>
+    <div class="flex gap-2"><input id="enCode" class="inp" dir="ltr" maxlength="20" placeholder="كود الخصم (اختياري)"><button onclick="checkCode('${id}',${i})" class="px-4 rounded-xl bg-amber-500 text-white text-xs font-bold shrink-0">تطبيق</button></div>
+    <p id="enCodeMsg" class="text-[11px] font-bold"></p>
+    <button onclick="submitEnroll('${id}',${i})" class="btn bg-blue-500">إرسال طلب التسجيل</button>
+    <button onclick="openCard('${id}')" class="w-full text-sm text-slate-400 py-1.5">رجوع</button></div>`;
+}
+async function checkCode(id,i){
+  const t=db.tutors.find(x=>x.id===id),c=$('enCode').value.trim(),m=$('enCodeMsg');if(!t||!c){m.textContent='';return}
+  try{const r=await api('POST','/codes/check',{tutor_id:id,subject:t.subjects[i].name.trim(),code:c});m.style.color='#10b981';m.textContent=`✅ خصم ${r.percent}% — المطلوب ${r.due} ${SAR} بدل ${r.price} ${SAR}`}
+  catch(e){m.style.color='#ef4444';m.textContent=e.message}
+}
+async function submitEnroll(id,i){
+  const t=db.tutors.find(x=>x.id===id);if(!t)return;
+  const name=$('enName').value.trim().replace(/\s+/g,' '),ph=$('enPh').value.replace(/[\s\-+]/g,'').replace(/^966/,'');
+  if(name.split(' ').filter(w=>w.length>=2).length<3||!/^[\p{L}\s]+$/u.test(name))return alert('اكتب اسمك الثلاثي (ثلاث كلمات) بالحروف فقط');
+  if(!/^0?5\d{8}$/.test(ph))return alert('رقم الجوال لازم يكون سعودي: يبدأ بـ 05 ويتكون من 10 أرقام');
+  try{await api('POST','/enrollments',{tutor_id:id,subject:t.subjects[i].name.trim(),full_name:name,phone:ph,code:$('enCode').value.trim()})}catch(e){return alert(e.message)}
   await loadAll();openCard(id);alert('تم إرسال تسجيلك للخصوصي، وستصلك رسالة عند القبول');
 }
+const DAYMS=864e5,accT=e=>new Date(String(e.accepted_at||e.created_at).replace(' ','T')+'Z').getTime();
+const rateLeft=e=>Math.ceil(((CFG.rateDelayDays??14)*DAYMS-(Date.now()-accT(e)))/DAYMS);
 const PAY={none:['لم يدفع','#ef4444'],partial:['دفع جزء','#f59e0b'],full:['دفع كامل','#10b981']};
 const payChip=e=>{const p=PAY[e.pay_status||'none'];return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold" style="background:${p[1]}22;color:${p[1]}">${p[0]}${e.pay_status==='partial'&&e.pay_note?': '+esc(e.pay_note):''}</span>`};
 const contactBtns=t=>{if(!t)return '';const tlh=t.telegram?(/^https?:/i.test(t.telegram)?t.telegram:'https://t.me/'+t.telegram.replace('@','')):'';
   return `<div class="grid grid-cols-2 gap-2">${t.whatsapp?`<a target="_blank" href="https://wa.me/${t.whatsapp.replace(/\D/g,'')}" class="btn bg-emerald-500 !py-2.5 text-xs"><i class="fa-brands fa-whatsapp"></i> واتساب</a>`:''}${tlh?`<a target="_blank" href="${esc(tlh)}" class="btn bg-sky-500 !py-2.5 text-xs"><i class="fa-brands fa-telegram"></i> تليجرام</a>`:''}</div>`};
 function renderEnr(){
+  const te=CFG.termEnd;
   const act=ENR.filter(e=>e.status!=='cancelled'),by=new Map();
   act.forEach(e=>{(by.get(e.tutor_id)||by.set(e.tutor_id,[]).get(e.tutor_id)).push(e)});
-  $('enrBox').innerHTML=[...by.entries()].map(([tid,list])=>{const t=db.tutors.find(x=>x.id===tid);
+  $('enrBox').innerHTML=(te?`<p class="text-[11px] text-slate-400 text-center"><i class="fa-solid fa-calendar"></i> نهاية الترم: ٢٠ رجب ${te.key}هـ (${te.date}) وبعدها يفتح تقييم نهاية الترم</p>`:'')+[...by.entries()].map(([tid,list])=>{const t=db.tutors.find(x=>x.id===tid);
     return `<div class="glass tcard rounded-2xl p-4 space-y-3 text-xs">
     <div class="flex items-center gap-3">${t?avatar(t,44):''}<div class="min-w-0 flex-1"><button onclick="openCard('${tid}')" class="font-black text-sm text-right flex items-center gap-1.5"><span>${esc(list[0].tutor_name)}</span>${vb(t,16)}</button>${t?`<p class="text-[10px] text-slate-400">${esc([t.gender,t.age?t.age+' سنة':''].filter(Boolean).join(' • '))}</p>`:''}</div></div>
     ${list.map(e=>`<div class="rounded-xl border border-slate-500/20 p-3 space-y-2">
       <div class="flex items-center justify-between gap-2"><p class="font-bold"><i class="fa-solid fa-book text-slate-400"></i> ${esc(e.subject)}</p>${stChip(e.status)}</div>
-      ${e.status==='accepted'?`<p class="${e.channel_added?'text-emerald-500':'text-amber-500'} font-bold">${e.channel_added?'✅ تمت إضافتك لقناة الشرح':'⏳ بانتظار إضافتك لقناة الشرح (خلال ٢٤ ساعة من القبول)'}</p><div class="flex items-center justify-between"><span class="text-slate-400">الدفع</span>${payChip(e)}</div><button onclick="openRate('${e.tutor_id}')" class="btn bg-emerald-500">قيّم الخصوصي</button>`:''}
+      ${e.status==='accepted'?`<p class="${e.channel_added?'text-emerald-500':'text-amber-500'} font-bold">${e.channel_added?'✅ تمت إضافتك لقناة الشرح':'⏳ بانتظار إضافتك لقناة الشرح (خلال ٢٤ ساعة من القبول)'}</p>${e.price_due?`<div class="flex items-center justify-between"><span class="text-slate-400">المبلغ المطلوب</span><b>${e.price_due} ${SAR}${e.discount_pct?` <span class="text-emerald-500 text-[10px]">(خصم ${e.discount_pct}% • ${esc(e.code)})</span>`:''}</b></div>`:''}<div class="flex items-center justify-between"><span class="text-slate-400">الدفع</span>${payChip(e)}</div>${FINAL.has(e.tutor_id)?`<button onclick="openRate('${e.tutor_id}')" class="btn bg-amber-500">📅 قيّم تقييم نهاية الترم</button>`:''}${rateLeft(e)>0?`<p class="rounded-xl bg-slate-500/10 p-2.5 text-center text-[11px] font-bold text-slate-400"><i class="fa-solid fa-clock"></i> يفتح تقييم الخصوصي بعد ${rateLeft(e)} يوم، بعد ما تجرّب الشرح</p>`:`<button onclick="openRate('${e.tutor_id}')" class="btn bg-emerald-500">قيّم الخصوصي</button>`}`:''}
       ${e.status==='pending'?`<button onclick="cancelEnr('${e.id}')" class="btn bg-slate-500">إلغاء الطلب</button>`:''}</div>`).join('')}
     ${contactBtns(t)}</div>`}).join('')||'<p class="text-center text-xs text-slate-400 p-6">لم تسجّل عند أي خصوصي بعد</p>';
 }
@@ -452,12 +483,15 @@ function renderStudents(){
     return `<div class="rounded-2xl border ${e.status==='pending'?'border-amber-500/30 bg-amber-500/5':'border-emerald-500/20 bg-emerald-500/5'} p-3 space-y-2 text-xs">
       <div class="flex items-center justify-between gap-2"><b class="truncate">${esc(e.who)}</b>${stChip(e.status)}</div>
       <p class="text-slate-400"><i class="fa-solid fa-book"></i> ${esc(e.subject)} • <a href="${link}" target="_blank" class="text-blue-500 font-bold">${e.username?'@'+esc(e.username):'مراسلة الطالب'}</a></p>
+      ${e.price_due?`<p class="text-slate-400"><i class="fa-solid fa-money-bill"></i> المطلوب: <b>${e.price_due} ${SAR}</b>${e.discount_pct?` <span class="text-emerald-500">(كود ${esc(e.code)} • خصم ${e.discount_pct}%)</span>`:''}</p>`:''}
+      ${e.phone?`<p class="text-slate-400" dir="ltr" style="text-align:right"><i class="fa-solid fa-phone"></i> <a href="https://wa.me/${esc(e.phone)}" target="_blank" class="text-emerald-500 font-bold">+${esc(e.phone)}</a></p>`:''}
       ${e.status==='pending'?`<div class="grid grid-cols-2 gap-2"><button onclick="tutorRespond('${e.id}','accept')" class="btn bg-emerald-500">قبول</button><button onclick="tutorRespond('${e.id}','reject')" class="btn bg-red-500">رفض</button></div>`:`
       <p class="font-bold ${e.channel_added?'text-emerald-500':'text-amber-500'}">${e.channel_added?'✅ تمت إضافته لقناة الشرح':(late?'⚠️ تأخرت أكثر من ٢٤ ساعة، أضفه الحين':'هل أضفت الطالب لقناة الشرح؟ (خلال ٢٤ ساعة من القبول)')}</p>
       <div class="grid grid-cols-2 gap-2">${e.channel_added?`<button onclick="tutorChannel('${e.id}',false)" class="btn bg-slate-500">تراجع</button>`:`<button onclick="tutorChannel('${e.id}',true)" class="btn bg-emerald-500">نعم، أضفته</button><button onclick="tutorChannel('${e.id}',false)" class="btn bg-slate-500">لا، لم أضفه بعد</button>`}</div>
       <div class="rounded-xl bg-slate-500/10 p-2.5 space-y-2"><div class="flex items-center justify-between"><span class="font-black">هل دفع المبلغ؟</span>${payChip(e)}</div>
         <div class="grid grid-cols-3 gap-1.5">${[['none','لم يدفع'],['partial','جزء'],['full','كامل']].map(([k,l])=>`<button onclick="setPay('${e.id}','${k}')" class="py-2 rounded-lg border text-[11px] font-bold ${ps===k?'bg-blue-500 text-white border-blue-500':'border-slate-500/40'}">${l}</button>`).join('')}</div>
         ${ps==='partial'?`<div class="flex gap-2"><input id="pn_${e.id}" class="inp" maxlength="120" placeholder="اكتب المبلغ المدفوع (مثال: 100 ريال)" value="${esc(e.pay_note||'')}"><button onclick="savePayNote('${e.id}')" class="px-4 rounded-xl bg-blue-500 text-white text-xs font-bold shrink-0">حفظ</button></div>`:''}
+        ${ps!=='full'?`<button onclick="toggleRemind('${e.id}',${e.pay_remind===0?'true':'false'})" class="w-full text-[11px] font-bold py-1.5 rounded-lg border border-slate-500/30">${e.pay_remind===0?'🔕 التذكير متوقف — اضغط للتفعيل':'🔔 تذكير الطالب كل ٣ أيام — اضغط للإيقاف'}</button>`:''}
         ${ps==='full'?`<input id="pn_${e.id}" class="inp" maxlength="120" placeholder="ملاحظة (اختياري)" value="${esc(e.pay_note||'')}" onchange="savePayNote('${e.id}')">`:''}</div>`}</div>`};
   $('stuBox').innerHTML=(pend.length?`<p class="text-xs font-black text-amber-500">طلبات جديدة (${pend.length})</p>${pend.map(card).join('')}`:'')+
     (acc.length?`<p class="text-xs font-black text-slate-400 pt-1">الطلاب المقبولون (${acc.length})</p>${acc.map(card).join('')}`:'')||'<p class="text-center text-xs text-slate-400 p-6">لا يوجد طلاب مسجلون بعد</p>';
@@ -467,6 +501,7 @@ async function setPay(id,st){
   if(!await run(api('POST','/me/enrollments/'+id+'/payment',{status:st,note:''})))return;
   await loadAll();renderStudents();
 }
+async function toggleRemind(id,on){if(!await run(api('POST','/me/enrollments/'+id+'/remind',{on})))return;await loadAll();renderStudents()}
 async function savePayNote(id){
   const e=TENR.find(x=>x.id===id),n=($('pn_'+id)||{}).value||'';
   if(!await run(api('POST','/me/enrollments/'+id+'/payment',{status:e.pay_status,note:n.trim()})))return;
@@ -478,22 +513,25 @@ async function cancelEnr(id){if(!confirm('إلغاء طلب التسجيل؟'))r
 const CATS=[['explain','الشرح'],['style','الأسلوب'],['coop','التعاون']];
 function catAvg(t,k){const v=(db.ratings[t.id]||[]).map(r=>r[k]).filter(x=>x>0);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):null}
 const catBar=(l,v)=>`<div><div class="flex justify-between text-xs mb-1"><span class="font-bold">${l}</span><b style="color:${v==null?'#94a3b8':rc(v)}">${v==null?'—':v+' / 100'}</b></div><div class="h-2 rounded-full bg-slate-500/20 overflow-hidden"><div class="h-full rounded-full" style="width:${v||0}%;background:${v==null?'transparent':rc(v)}"></div></div></div>`;
-const sl=(k,l)=>`<div><div class="flex justify-between text-xs mb-1"><span class="font-bold">${l}</span><b id="rv_${k}" style="color:${rc(80)}">80</b></div><input type="range" min="1" max="100" value="80" id="rs_${k}" oninput="rvUpd('${k}',this.value)" class="w-full accent-emerald-500"></div>`;
+const sl=(k,l,p='')=>`<div><div class="flex justify-between text-xs mb-1"><span class="font-bold">${l}</span><b id="rv_${p}${k}" style="color:${rc(80)}">80</b></div><input type="range" min="1" max="100" value="80" id="rs_${p}${k}" oninput="rvUpd('${p}${k}',this.value)" class="w-full accent-emerald-500"></div>`;
 function rvUpd(k,v){const e=$('rv_'+k);e.textContent=v;e.style.color=rc(+v)}
 function renderRate(){$('rateBox').innerHTML=db.tutors.length?db.tutors.map(t=>tutorRow(t,'openRate')).join(''):'<p class="text-center text-xs text-slate-400 p-6">لا يوجد خصوصيون للتقييم</p>'}
 function openRate(id){
   const t=db.tutors.find(x=>x.id===id);if(!t)return;
-  const list=db.ratings[id]||[],mine=list.find(r=>r.mine),isMe=me.tutorId===id,eligible=ENR.some(e=>e.tutor_id===id&&e.status==='accepted');
-  const form=isMe?'':(!mine&&!eligible)?`<div class="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-3 space-y-2 text-xs"><p class="font-bold"><i class="fa-solid fa-lock"></i> التقييم لمن سجّل عند الخصوصي</p><p class="text-slate-400 leading-relaxed">تقدر تقيّم الخصوصي بعد ما يقبل تسجيلك عنده، عشان تبقى التقييمات من طلاب شرح لهم فعلاً.</p><button onclick="openCard('${id}')" class="btn bg-blue-500">سجّل عند الخصوصي</button></div>`:mine?`<div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-2 text-xs">
+  const list=db.ratings[id]||[],mine=list.find(r=>r.mine&&!r.term),isMe=me.tutorId===id,accs=ENR.filter(e=>e.tutor_id===id&&e.status==='accepted'),eligible=accs.some(e=>rateLeft(e)<=0),waitDays=accs.length&&!eligible?Math.min(...accs.map(rateLeft)):0;
+  const finalForm=(!isMe&&FINAL.has(id))?`<div class="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3 space-y-3"><p class="text-sm font-black">📅 تقييم نهاية الترم</p><p class="text-[11px] text-slate-400">انتهى الترم، قيّم الخصوصي بعد ما أكملت معه.</p>${CATS.map(([k,l])=>sl(k,l,'f')).join('')}
+      <textarea id="rcf" rows="2" placeholder="تعليقك (اختياري)" class="inp"></textarea>
+      <button onclick="sendRate('${id}',true)" class="btn bg-amber-500">إرسال تقييم نهاية الترم</button></div>`:'';
+  const form=finalForm+(isMe?'':(!mine&&waitDays>0)?`<div class="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-3 space-y-1 text-xs"><p class="font-bold"><i class="fa-solid fa-clock"></i> التقييم يفتح بعد ${waitDays} يوم</p><p class="text-slate-400 leading-relaxed">تقدر تقيّم الخصوصي بعد مدة من قبول تسجيلك، عشان يكون تقييمك بعد ما تجرّب الشرح.</p></div>`:(!mine&&!eligible)?`<div class="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-3 space-y-2 text-xs"><p class="font-bold"><i class="fa-solid fa-lock"></i> التقييم لمن سجّل عند الخصوصي</p><p class="text-slate-400 leading-relaxed">تقدر تقيّم الخصوصي بعد ما يقبل تسجيلك عنده، عشان تبقى التقييمات من طلاب شرح لهم فعلاً.</p><button onclick="openCard('${id}')" class="btn bg-blue-500">سجّل عند الخصوصي</button></div>`:mine?`<div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-2 text-xs">
       <p class="font-bold"><i class="fa-solid fa-circle-check"></i> سبق أن قيّمت هذا الخصوصي (${mine.score}/100)</p>
       <p class="text-slate-400">لا يمكن تعديل التقييم مباشرة. أرسل طلباً للإدارة وسيتم فتح التقييم لك بعد الموافقة.</p>
       <textarea id="er" rows="2" class="inp" placeholder="سبب طلب التعديل (اختياري)"></textarea>
       <button onclick="reqEdit('${id}')" class="btn bg-amber-500">طلب تعديل التقييم</button></div>`
     :`<div class="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-3"><p class="text-sm font-black">قيّم هذا الخصوصي</p>${CATS.map(([k,l])=>sl(k,l)).join('')}
       <textarea id="rc" rows="2" placeholder="تعليقك (اختياري)" class="inp"></textarea>
-      <button onclick="sendRate('${id}')" class="btn bg-emerald-500">إرسال التقييم</button></div>`;
+      <button onclick="sendRate('${id}')" class="btn bg-emerald-500">إرسال التقييم</button></div>`);
   const reviews=list.slice().reverse().map(r=>`<div class="rounded-2xl bg-slate-500/10 p-3 space-y-1.5 text-xs">
-      <div class="flex items-center justify-between"><b>${esc(r.who)}</b><div class="flex items-center gap-2"><b style="color:${rc(r.score)}">${r.score}/100</b>${r.mine||isMe?'':`<button title="إبلاغ عن تقييم" onclick="reportReview('${id}','${r.id}')"><i class="fa-regular fa-flag" style="color:#94a3b8"></i></button>`}</div></div>
+      <div class="flex items-center justify-between"><b>${esc(r.who)}${r.term?` <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-500">نهاية الترم</span>`:''}</b><div class="flex items-center gap-2"><b style="color:${rc(r.score)}">${r.score}/100</b>${r.mine||isMe?'':`<button title="إبلاغ عن تقييم" onclick="reportReview('${id}','${r.id}')"><i class="fa-regular fa-flag" style="color:#94a3b8"></i></button>`}</div></div>
       ${r.explain?`<div class="flex gap-3 text-[10px] text-slate-400"><span>الشرح ${r.explain}</span><span>الأسلوب ${r.style}</span><span>التعاون ${r.coop}</span></div>`:''}
       ${r.text?`<p class="text-slate-400 leading-relaxed">${esc(r.text)}</p>`:''}
       ${r.reply?`<div class="rounded-xl bg-blue-500/10 p-2 text-[11px] leading-relaxed"><b class="text-blue-500">رد الخصوصي:</b> <span>${esc(r.reply)}</span></div>`:''}
@@ -513,11 +551,11 @@ async function replyTo(tid,rid){
   if(!await run(api('POST','/me/replies',{rating_id:rid,reply:v})))return;
   await loadAll();openRate(tid);
 }
-async function sendRate(id){
-  const v={};CATS.forEach(([k])=>v[k]=+$('rs_'+k).value);
-  try{await api('POST','/ratings',{tutor_id:id,...v,comment:$('rc').value.trim()})}
-  catch(e){return alert(e.status===409?'سبق أن قيّمت هذا الخصوصي. أرسل طلب تعديل للإدارة':e.code==='not_enrolled'?e.message:'خطأ: '+e.message)}
-  await loadAll();closeCard();renderRate();alert('شكراً لتقييمك');
+async function sendRate(id,fin){
+  const p=fin?'f':'',v={};CATS.forEach(([k])=>v[k]=+$('rs_'+p+''+k).value);
+  try{await api('POST','/ratings',{tutor_id:id,...v,final:!!fin,comment:$(fin?'rcf':'rc').value.trim()})}
+  catch(e){return alert(e.status===409?(fin?'سبق أن قيّمت في نهاية هذا الترم':'سبق أن قيّمت هذا الخصوصي. أرسل طلب تعديل للإدارة'):['not_enrolled','too_early','no_final'].includes(e.code)?e.message:'خطأ: '+e.message)}
+  await loadAll();closeCard();renderRate();if(curPage==='enr')renderEnr();if(curPage==='home')renderHome();alert('شكراً لتقييمك');
 }
 async function reqEdit(id){
   try{await api('POST','/rating-edits',{tutor_id:id,reason:$('er').value.trim()})}
@@ -641,7 +679,7 @@ const FLD={whatsapp:'رقم الواتساب',telegram:'يوزر التليجر�
 async function renderMe(){
   const box=$('meBox'),t=db.tutors.find(x=>x.id===me.tutorId);
   if(!t){box.innerHTML='<p class="text-center text-xs text-slate-400 p-6">لا يوجد حساب خصوصي مرتبط بك</p>';return}
-  let st={};try{st=await api('GET','/me/stats')}catch(e){}
+  let st={},codes=[];try{st=await api('GET','/me/stats')}catch(e){}try{codes=(await api('GET','/me/codes')).codes}catch(e){}
   const pe=st.pendingEdit,tv=pe?{...t,...pe.changes}:t;
   const stat=(l,v,c)=>`<div class="rounded-2xl bg-slate-500/10 p-3 text-center"><div class="text-xl font-black" style="color:${c}">${v}</div><div class="text-[10px] text-slate-400 mt-1">${l}</div></div>`;
   box.innerHTML=`
@@ -655,6 +693,10 @@ async function renderMe(){
     ${st.warnings?`<p class="text-[11px] rounded-xl bg-red-500/10 text-red-500 p-2 text-center font-bold">الإنذارات: ${st.warnings}/3</p>`:''}
     <button onclick="openRate('${t.id}')" class="btn bg-emerald-500"><i class="fa-solid fa-comments"></i> عرض تقييماتي والرد عليها</button>
     <button onclick="go('students')" class="btn bg-blue-500"><i class="fa-solid fa-users"></i> طلابي والدفع ${TENR.filter(e=>e.status==='pending').length?`<span class="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px]">${TENR.filter(e=>e.status==='pending').length} جديد</span>`:''}</button>
+    <p class="text-xs font-black text-slate-400 pt-2">أكواد الخصم للطلاب</p>
+    <div class="space-y-1.5">${codes.map(c=>`<div class="flex items-center justify-between rounded-xl bg-slate-500/10 px-3 py-2 text-xs"><span><b dir="ltr">${esc(c.code)}</b> • خصم ${c.percent}% • استُخدم ${c.uses}</span><button onclick="delCode(this.dataset.c)" data-c="${esc(c.code)}" class="text-red-500"><i class="fa-solid fa-trash"></i></button></div>`).join('')||'<p class="text-[11px] text-slate-400 text-center">ما أضفت أكواد بعد</p>'}</div>
+    <div class="grid grid-cols-5 gap-2"><input id="cdName" class="inp col-span-2" dir="ltr" maxlength="20" placeholder="الكود"><input id="cdPct" type="number" inputmode="numeric" min="1" max="90" class="inp col-span-2" placeholder="نسبة الخصم %"><button onclick="addCode()" class="rounded-xl bg-blue-500 text-white text-xs font-bold">إضافة</button></div>
+    <p class="text-[10px] text-slate-400">الطالب يكتب الكود عند التسجيل ويطلع له السعر بعد الخصم، وتشوفه عندك في «طلابي».</p>
     <p class="text-xs font-black text-slate-400 pt-2">حالة التوفر</p>
     <input type="hidden" id="meav" value="${esc(t.availability||'available')}">
     <div id="meavbox" class="grid grid-cols-2 gap-2"><button type="button" data-g="available" onclick="setAvail('available')" class="py-3 rounded-xl border text-sm font-bold"><span>متاح للطلاب</span></button><button type="button" data-g="full" onclick="setAvail('full')" class="py-3 rounded-xl border text-sm font-bold"><span>ممتلئ</span></button></div>
@@ -665,6 +707,11 @@ async function renderMe(){
 }
 async function tutorRespond(id,action){if(!await run(api('POST','/me/enrollments/'+id+'/respond',{action})))return;await loadAll();curPage==='students'?renderStudents():renderMe()}
 async function tutorChannel(id,added){if(!await run(api('POST','/me/enrollments/'+id+'/channel',{added})))return;await loadAll();curPage==='students'?renderStudents():renderMe()}
+async function addCode(){
+  if(!await run(api('POST','/me/codes',{code:$('cdName').value.trim(),percent:+$('cdPct').value})))return;
+  renderMe();
+}
+async function delCode(c){if(!confirm('حذف الكود '+c+'؟'))return;if(!await run(api('POST','/me/codes/remove',{code:c})))return;renderMe()}
 async function saveMe(){
   const o=readForm('me','self');if(!o)return;
   let res;try{res=await api('PUT','/me/tutor',{...o,availability:$('meav').value,bio:$('mebio').value.trim()})}catch(e){return alert('خطأ: '+e.message)}
