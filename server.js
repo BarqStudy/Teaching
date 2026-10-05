@@ -123,6 +123,12 @@ CREATE TABLE IF NOT EXISTS bad_words(word TEXT PRIMARY KEY);
 CREATE INDEX IF NOT EXISTS ev_idx ON events(type, ts);
 `);
 addCol('enrollments', 'accepted_at', 'TEXT');
+addCol('enrollments', 'ch_state', "TEXT DEFAULT ''");
+addCol('enrollments', 'ch_mark_at', 'TEXT');
+addCol('enrollments', 'ch_reminders', 'INTEGER DEFAULT 0');
+addCol('enrollments', 'delay_reason', "TEXT DEFAULT ''");
+db.exec(`CREATE TABLE IF NOT EXISTS complaints(id TEXT PRIMARY KEY, created_at TEXT DEFAULT (datetime('now')), kind TEXT, from_tg TEXT, from_name TEXT,
+  tutor_id TEXT, enrollment_id TEXT, text TEXT, status TEXT DEFAULT 'open', admin_reply TEXT DEFAULT '', closed_at TEXT);`);
 addCol('enrollments', 'phone', "TEXT DEFAULT ''");
 addCol('users', 'full_name', "TEXT DEFAULT ''");
 addCol('users', 'phone', "TEXT DEFAULT ''");
@@ -290,8 +296,8 @@ route('GET', '/api/bootstrap', ctx => {
   return {
     me: { authed: !!u, id: u?.id || null, name: u?.name || null, isAdmin: !!u?.isAdmin, tutorId, favorites, finalOpen: u ? finalOpenFor(u.id).map(x => x.tutor_id) : [], profile: u ? (get('SELECT full_name,phone FROM users WHERE tg_id=?', u.id) || {}) : {},
       enrollments: u ? all(`SELECT e.id,e.tutor_id,e.subject,e.status,e.channel_added,COALESCE(e.accepted_at,e.updated_at) accepted_at,e.pay_status,e.pay_note,e.code,e.discount_pct,e.price_due,e.created_at,t.name tutor_name FROM enrollments e JOIN tutors t ON t.id=e.tutor_id WHERE e.tg_id=? ORDER BY e.created_at DESC`, u.id) : [],
-      tutorEnrollments: tutorId ? all(`SELECT id,subject,who,phone,username,tg_id,status,channel_added,COALESCE(accepted_at,updated_at) accepted_at,pay_status,pay_note,pay_remind,code,discount_pct,price_due,created_at FROM enrollments WHERE tutor_id=? ORDER BY created_at DESC`, tutorId) : [] },
-    config: { appLink: APP_LINK, rateDelayDays: RATE_DELAY_DAYS, termEnd: (() => { const t = termEndAfter(new Date(Date.now() - 864e5)); return t ? { key: t.key, date: t.date } : null; })() },
+      tutorEnrollments: tutorId ? all(`SELECT id,subject,who,phone,username,tg_id,status,channel_added,COALESCE(accepted_at,updated_at) accepted_at,ch_state,ch_mark_at,delay_reason,pay_status,pay_note,pay_remind,code,discount_pct,price_due,created_at FROM enrollments WHERE tutor_id=? ORDER BY created_at DESC`, tutorId) : [] },
+    config: { appLink: APP_LINK || (BOT_USERNAME ? `https://t.me/${BOT_USERNAME}` : ''), rateDelayDays: RATE_DELAY_DAYS, termEnd: (() => { const t = termEndAfter(new Date(Date.now() - 864e5)); return t ? { key: t.key, date: t.date } : null; })() },
     tutors: all(`SELECT * FROM tutors WHERE status='active' ORDER BY created_at`).map(r => ({ ...pubTutor(r), badges: badges[r.id] || [] })),
     ratings: all(`SELECT r.id,r.tutor_id,r.tg_id,r.who,r.score,r.explain,r.style,r.coop,r.comment,r.reply,r.reply_at,r.term,r.created_at
                   FROM ratings r JOIN tutors t ON t.id=r.tutor_id WHERE t.status='active' ORDER BY r.created_at`)
@@ -476,7 +482,10 @@ route('GET', '/api/admin/data', ctx => {
     tutors: all('SELECT * FROM tutors ORDER BY created_at').map(adminTutor),
     reports: all(`SELECT p.id,p.created_at,p.who,p.kind,p.tutor_id,p.rating_id,p.reason,t.name tutor_name,r.comment,r.who rater,r.score
                   FROM reports p LEFT JOIN tutors t ON t.id=p.tutor_id LEFT JOIN ratings r ON r.id=p.rating_id WHERE p.status='open' ORDER BY p.created_at`),
-    enrollments: all(`SELECT e.id,e.subject,e.who,e.phone,e.username,e.status,e.channel_added,e.created_at,t.name tutor_name,t.tg_id tutor_tg FROM enrollments e JOIN tutors t ON t.id=e.tutor_id ORDER BY e.created_at DESC LIMIT 300`),
+    enrollments: all(`SELECT e.id,e.subject,e.who,e.phone,e.username,e.status,e.channel_added,e.ch_state,e.delay_reason,e.created_at,t.name tutor_name,t.tg_id tutor_tg FROM enrollments e JOIN tutors t ON t.id=e.tutor_id ORDER BY e.created_at DESC LIMIT 300`),
+    complaints: all(`SELECT c.id,c.created_at,c.kind,c.from_name,c.text,c.status,c.admin_reply,t.name tutor_name,t.whatsapp tutor_wa,t.telegram tutor_tgu,t.tg_id tutor_tg,
+        e.who stu_name,e.phone stu_phone,e.username stu_user,e.tg_id stu_tg,e.subject FROM complaints c LEFT JOIN tutors t ON t.id=c.tutor_id LEFT JOIN enrollments e ON e.id=c.enrollment_id
+        ORDER BY (c.status='open') DESC, c.created_at DESC LIMIT 200`),
     badWords: all('SELECT word FROM bad_words').map(r => r.word),
     tutorEdits: all(`SELECT e.id,e.created_at,e.tutor_id,e.changes,t.name,t.whatsapp,t.telegram,t.subjects,t.bio,t.photo FROM tutor_edits e JOIN tutors t ON t.id=e.tutor_id ORDER BY e.created_at`).map(r => {
       const c = JSON.parse(r.changes); if (c.subjects) c.subjects = JSON.parse(c.subjects);
@@ -489,8 +498,9 @@ route('GET', '/api/admin/data', ctx => {
 // يقبل الأرقام العربية (٠-٩) والفارسية وأي مسافات أو رموز اتجاه خفية يضيفها كيبورد الآيباد/الجوال
 const toAsciiDigits = x => String(x ?? '').replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x660).replace(/[\u06F0-\u06F9]/g, d => d.charCodeAt(0) - 0x6F0);
 const cleanTgId = v => {
-  v = toAsciiDigits(v).replace(/[\s\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff,،٬]/g, '');
-  if (v && !/^\d{3,15}$/.test(v)) throw bad('اكتب آيدي تليجرام أرقاماً فقط (تعرفه من بوت @userinfobot)');
+  const raw = String(v ?? '');
+  v = toAsciiDigits(raw.normalize('NFKC')).replace(/[^\p{L}\p{N}]/gu, '');   // يشيل المسافات والرموز الخفية (اتجاه/علامات عربية)
+  if (v && !/^\d{3,15}$/.test(v)) throw bad(`اكتب آيدي تليجرام أرقاماً فقط (تعرفه من بوت @userinfobot). المستلم: «${raw.trim().slice(0, 30)}»`);
   return v || null;
 };
 route('POST', '/api/admin/tutors', async ctx => {
@@ -504,7 +514,9 @@ route('POST', '/api/admin/tutors', async ctx => {
 });
 route('PUT', '/api/admin/tutors/:id', async ctx => {
   needAdmin(ctx); const t = cleanTutor(ctx.body); await verifyChannels(t.subjects); const _t = t, rating = Math.max(0, Math.min(100, +ctx.body.rating || 0));
-  const tgid = cleanTgId(ctx.body.tg_id);
+  let tgid;
+  try { tgid = cleanTgId(ctx.body.tg_id); }
+  catch (e) { const cur = get('SELECT tg_id FROM tutors WHERE id=?', ctx.params.id); if (cur && String(ctx.body.tg_id ?? '').trim() === String(cur.tg_id ?? '').trim()) tgid = cur.tg_id || null; else throw e; }
   run('UPDATE tutors SET name=?,nationality=?,age=?,gender=?,whatsapp=?,telegram=?,subjects=?,rating=?,tg_id=? WHERE id=?',
     t.name, t.nationality, t.age, t.gender, t.whatsapp, t.telegram, t.subjects, rating, tgid, ctx.params.id);
   if (ctx.body.image) savePhoto(ctx.params.id, ctx.body.image);
@@ -741,7 +753,7 @@ route('POST', '/api/enrollments', ctx => {
   if (ex && ['pending', 'accepted'].includes(ex.status)) throw new HttpError(409, 'سبق أن سجّلت في هذه المادة', 'exists');
   if (get(`SELECT COUNT(*) c FROM enrollments WHERE tg_id=? AND status='pending'`, u.id).c >= 10) throw bad('لديك طلبات تسجيل كثيرة قيد الانتظار');
   const id = ex ? ex.id : uuid();
-  if (ex) run(`UPDATE enrollments SET status='pending',channel_added=0,accepted_at=NULL,overdue_notified=0,pay_status='none',pay_note='',username=?,who=?,phone=?,code=?,discount_pct=?,price_due=?,last_pay_reminder=NULL,final_notified='',updated_at=datetime('now') WHERE id=?`, u.username || '', fullName, phone, codeUsed, pct, priceDue, id);
+  if (ex) run(`UPDATE enrollments SET status='pending',channel_added=0,ch_state='',ch_mark_at=NULL,ch_reminders=0,delay_reason='',accepted_at=NULL,overdue_notified=0,pay_status='none',pay_note='',username=?,who=?,phone=?,code=?,discount_pct=?,price_due=?,last_pay_reminder=NULL,final_notified='',updated_at=datetime('now') WHERE id=?`, u.username || '', fullName, phone, codeUsed, pct, priceDue, id);
   else run('INSERT INTO enrollments(id,tutor_id,subject,tg_id,who,username,phone,code,discount_pct,price_due) VALUES(?,?,?,?,?,?,?,?,?,?)', id, t.id, subject, u.id, fullName, u.username || '', phone, codeUsed, pct, priceDue);
   const e = getEnr(id), acts = kb([[{ text: '✅ قبول', callback_data: `e:${id}:acc` }, { text: '❌ رفض', callback_data: `e:${id}:rej` }]]);
   notify(t.tg_id, `📥 طالب جديد سجّل عندك\nالطالب: ${who(e)}\nالجوال: +${phone}\nالمادة: ${subject}${codeUsed ? `\nكود الخصم: ${codeUsed} (${pct}%) ← المطلوب ${priceDue} ريال` : ''}`, acts);
@@ -757,14 +769,16 @@ route('POST', '/api/enrollments/:id/cancel', ctx => {
 function respondEnrollment(e, act) {
   if (e.status !== 'pending') throw bad('تمت معالجة هذا الطلب مسبقاً');
   const acc = act === 'acc';
-  run(`UPDATE enrollments SET status=?,channel_added=0,overdue_notified=0,accepted_at=?,updated_at=datetime('now') WHERE id=?`, acc ? 'accepted' : 'rejected', acc ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null, e.id);
+  run(`UPDATE enrollments SET status=?,channel_added=0,ch_state='',ch_mark_at=NULL,ch_reminders=0,overdue_notified=0,accepted_at=?,updated_at=datetime('now') WHERE id=?`, acc ? 'accepted' : 'rejected', acc ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null, e.id);
   notify(e.tg_id, acc ? `✅ قبل الخصوصي ${e.tutor_name} تسجيلك في مادة ${e.subject}.\nسيضيفك إلى قناة الشرح خلال ٢٤ ساعة كحد أقصى، ويمكنك الآن تقييمه من المنصة.` : `❌ اعتذر الخصوصي ${e.tutor_name} عن قبول تسجيلك في مادة ${e.subject}.`);
   for (const a of ADMIN_IDS) notify(a, `📋 الخصوصي ${e.tutor_name} ${acc ? 'قبل' : 'رفض'} تسجيل الطالب ${who(e)} (${e.subject})`);
   if (acc) notify(e.tutor_tg, `هل أضفت الطالب ${who(e)} إلى قناة الشرح (${e.subject})؟\n⏰ المطلوب إضافته خلال ٢٤ ساعة من القبول.`, kb([[{ text: '✅ أضفته', callback_data: `e:${e.id}:ch1` }, { text: '⏳ لم أضفه بعد', callback_data: `e:${e.id}:ch0` }]]));
 }
 function respondChannel(e, added) {
   if (e.status !== 'accepted') throw bad('يجب قبول التسجيل أولاً');
-  run(`UPDATE enrollments SET channel_added=?,updated_at=datetime('now') WHERE id=?`, added ? 1 : 0, e.id);
+  if (added) run(`UPDATE enrollments SET channel_added=1,ch_state='',updated_at=datetime('now') WHERE id=?`, e.id);
+  else if (e.ch_state === 'notyet' || e.ch_state === 'warned') run(`UPDATE enrollments SET channel_added=0,updated_at=datetime('now') WHERE id=?`, e.id);
+  else run(`UPDATE enrollments SET channel_added=0,ch_state='notyet',ch_mark_at=datetime('now'),ch_reminders=0,updated_at=datetime('now') WHERE id=?`, e.id);
   if (added && !e.channel_added) {
     notify(e.tg_id, `📢 تمت إضافتك إلى قناة الشرح لمادة ${e.subject} عند الخصوصي ${e.tutor_name}.`);
     for (const a of ADMIN_IDS) notify(a, `📢 الخصوصي ${e.tutor_name} أضاف الطالب ${who(e)} إلى قناة الشرح (${e.subject})`);
@@ -772,6 +786,14 @@ function respondChannel(e, added) {
 }
 const myEnr = ctx => { const t = myTutor(ctx), e = getEnr(ctx.params.id); if (!e || e.tutor_id !== t.id) throw new HttpError(404, 'غير موجود'); return e; };
 route('POST', '/api/me/enrollments/:id/respond', ctx => { respondEnrollment(myEnr(ctx), ctx.body.action === 'accept' ? 'acc' : 'rej'); return { ok: true }; });
+route('POST', '/api/me/enrollments/:id/delay-reason', ctx => {
+  const e = myEnr(ctx), r = str(ctx.body.reason, 300);
+  if (e.status !== 'accepted' || !['notyet', 'warned'].includes(e.ch_state)) throw bad('لا يوجد تأخير يحتاج سبب');
+  if (r.length < 3) throw bad('اكتب سبب التأخير');
+  run('UPDATE enrollments SET delay_reason=? WHERE id=?', r, e.id);
+  for (const a of ADMIN_IDS) notify(a, `📝 سبب تأخير الخصوصي ${e.tutor_name} عن إضافة الطالب ${who(e)} (${e.subject}):\n${r}`);
+  return { ok: true };
+});
 route('POST', '/api/me/enrollments/:id/channel', ctx => { respondChannel(myEnr(ctx), !!ctx.body.added); return { ok: true }; });
 route('POST', '/api/me/enrollments/:id/payment', ctx => {
   const e = myEnr(ctx); if (e.status !== 'accepted') throw bad('الدفع يُسجَّل للطالب المقبول فقط');
@@ -784,13 +806,57 @@ route('POST', '/api/me/enrollments/:id/payment', ctx => {
 function remindOverdue() {
   try {
     run(`DELETE FROM bot_inbox WHERE ts < datetime('now','-30 days')`);
-    for (const e of all(`SELECT e.id FROM enrollments e WHERE e.status='accepted' AND e.channel_added=0 AND COALESCE(e.overdue_notified,0)=0 AND COALESCE(e.accepted_at,e.updated_at) <= datetime('now','-24 hours')`)) {
+    for (const e of all(`SELECT e.id FROM enrollments e WHERE e.status='accepted' AND e.channel_added=0 AND COALESCE(e.ch_state,'')='' AND COALESCE(e.overdue_notified,0)=0 AND COALESCE(e.accepted_at,e.updated_at) <= datetime('now','-24 hours')`)) {
       const x = getEnr(e.id); run('UPDATE enrollments SET overdue_notified=1 WHERE id=?', x.id);
       notify(x.tutor_tg, `⏰ تنبيه: مرّت ٢٤ ساعة على قبول الطالب ${who(x)} (${x.subject}) ولم تضفه إلى قناة الشرح.\nأضفه الحين ثم اضغط «أضفته».`, kb([[{ text: '✅ أضفته', callback_data: `e:${x.id}:ch1` }]]));
       for (const a of ADMIN_IDS) notify(a, `⏰ الخصوصي ${x.tutor_name} تأخر أكثر من ٢٤ ساعة في إضافة الطالب ${who(x)} إلى قناة الشرح (${x.subject})`);
     }
   } catch (err) { console.error('remindOverdue failed', err.message); }
 }
+function remindChannel() {
+  try {
+    for (const r of all(`SELECT id FROM enrollments WHERE status='accepted' AND channel_added=0 AND ch_state='notyet' AND ch_mark_at IS NOT NULL`)) {
+      const x = getEnr(r.id), hrs = (Date.now() - new Date(x.ch_mark_at.replace(' ', 'T') + 'Z').getTime()) / 36e5, n = x.ch_reminders || 0;
+      const btn = [{ text: '✅ أضفته', callback_data: `e:${x.id}:ch1` }];
+      if (n < 2 && hrs >= 24 * (n + 1)) {
+        run('UPDATE enrollments SET ch_reminders=? WHERE id=?', n + 1, x.id);
+        notify(x.tutor_tg, `⏰ تذكير ${n + 1}/2: لسا ما أضفت الطالب ${who(x)} (${x.subject}) إلى قناة الشرح.\nإذا ما أضفته خلال ٣ أيام يجيك إنذار وتكتب سبب التأخير.`, kb([btn]));
+      } else if (n >= 2 && hrs >= 72) {
+        run(`UPDATE enrollments SET ch_state='warned' WHERE id=?`, x.id);
+        const cnt = get(`SELECT COUNT(*) c FROM enrollments WHERE tutor_id=? AND ch_state='warned'`, x.tutor_id).c;
+        notify(x.tutor_tg, `🚨 إنذار: مرّت ٣ أيام وما أضفت الطالب ${who(x)} (${x.subject}) إلى قناة الشرح.\nافتح المنصة ← طلابي ← اضغط على الطالب واكتب سبب التأخير.`,
+          kb([PUBLIC_URL ? [{ text: '📝 اكتب سبب التأخير', web_app: { url: `${PUBLIC_URL}/` } }] : [], btn].filter(r => r.length)));
+        for (const a of ADMIN_IDS) notify(a, `🚨 أُرسل إنذار للخصوصي ${x.tutor_name}: تأخر ٣ أيام في إضافة الطالب ${who(x)} (${x.subject}) (عدد إنذاراته الحالية: ${cnt})`);
+      }
+    }
+  } catch (err) { console.error('remindChannel failed', err.message); }
+}
+function closeComplaint(id, reply) {
+  const c = get('SELECT * FROM complaints WHERE id=?', id); if (!c) throw new HttpError(404, 'الشكوى غير موجودة');
+  run(`UPDATE complaints SET status='closed',admin_reply=?,closed_at=datetime('now') WHERE id=?`, reply || '', id);
+  notify(c.from_tg, reply ? `📩 رد الإدارة على شكواك:\n${reply}` : '✅ راجعت الإدارة شكواك وتم إغلاقها.');
+}
+route('POST', '/api/complaints', ctx => {
+  const u = needUser(ctx), b = ctx.body, text = str(b.text, 600);
+  if (text.length < 5) throw bad('اكتب تفاصيل الشكوى (٥ أحرف على الأقل)');
+  let kind, e;
+  if (b.enrollment_id) {
+    e = getEnr(String(b.enrollment_id)); if (!e || e.tutor_tg !== u.id) throw new HttpError(403, 'غير مصرّح'); kind = 'tutor';
+  } else {
+    e = get(`SELECT e.*, t.name tutor_name, t.tg_id tutor_tg FROM enrollments e JOIN tutors t ON t.id=e.tutor_id WHERE e.tutor_id=? AND e.tg_id=? AND e.status<>'cancelled' ORDER BY e.created_at DESC LIMIT 1`, String(b.tutor_id || ''), u.id);
+    if (!e) throw bad('تقدر ترفع شكوى بعد ما تسجّل عند الخصوصي'); kind = 'student';
+  }
+  if (get(`SELECT 1 x FROM complaints WHERE kind=? AND from_tg=? AND enrollment_id=? AND status='open'`, kind, u.id, e.id)) throw new HttpError(409, 'عندك شكوى قيد المراجعة بنفس الموضوع', 'pending');
+  const id = uuid(), fromName = kind === 'student' ? (e.who || u.name) : e.tutor_name;
+  run('INSERT INTO complaints(id,kind,from_tg,from_name,tutor_id,enrollment_id,text) VALUES(?,?,?,?,?,?,?)', id, kind, u.id, fromName, e.tutor_id, e.id, text);
+  const msg = kind === 'student' ? `🚩 شكوى طالب على خصوصي\nالطالب: ${who(e)}${e.phone ? ' +' + e.phone : ''}\nالخصوصي: ${e.tutor_name}\nالمادة: ${e.subject}\n\n${text}`
+    : `🚩 شكوى خصوصي على طالب\nالخصوصي: ${e.tutor_name}\nالطالب: ${who(e)}${e.phone ? ' +' + e.phone : ''}\nالمادة: ${e.subject}\n\n${text}`;
+  for (const a of ADMIN_IDS) notify(a, msg, kb([[{ text: '✅ إغلاق الشكوى', callback_data: `c:${id}:close` }]]));
+  return { ok: true };
+});
+route('POST', '/api/admin/complaints/:id/resolve', ctx => { needAdmin(ctx); closeComplaint(ctx.params.id, str(ctx.body.reply, 500)); return { ok: true }; });
+setTimeout(() => { remindChannel(); }, 25_000).unref();
+setInterval(remindChannel, 15 * 60_000).unref();
 setTimeout(remindOverdue, 20_000).unref();
 setInterval(remindOverdue, 15 * 60_000).unref();
 const normCode = c => String(c || '').trim().toUpperCase().replace(/\s+/g, '');
@@ -925,11 +991,14 @@ async function handleCallback(cq) {
       if (!map[act]) throw new Error('إجراء غير معروف');
       applyReport(id, map[act]);
       note = { warn: '⚠️ تم إنذار الخصوصي', expel: '⛔ تم طرد الخصوصي', dismiss: 'تم التجاهل', del: '🗑 تم حذف التقييم' }[act];
+    } else if (kind === 'c') {
+      if (!isAdm) throw new Error('غير مصرّح');
+      closeComplaint(id, ''); note = '✅ تم إغلاق الشكوى';
     } else if (kind === 'e') {
       const e = getEnr(id); if (!e) throw new Error('غير موجود');
       if (!(isAdm || actor === e.tutor_tg)) throw new Error('غير مصرّح');
       if (act === 'acc' || act === 'rej') { respondEnrollment(e, act); note = act === 'acc' ? '✅ تم قبول الطالب' : '❌ تم رفض الطالب'; }
-      else if (act === 'ch1' || act === 'ch0') { respondChannel(e, act === 'ch1'); note = act === 'ch1' ? '📢 تم تسجيل إضافته للقناة' : '⏳ سنذكّرك لاحقاً'; }
+      else if (act === 'ch1' || act === 'ch0') { respondChannel(e, act === 'ch1'); note = act === 'ch1' ? '📢 تم تسجيل إضافته للقناة' : '🔴 سُجّل أنك لم تضفه بعد، سنذكّرك مرتين وبعد ٣ أيام يجيك إنذار'; }
       else throw new Error('إجراء غير معروف');
     } else throw new Error('غير معروف');
     await tgCall('answerCallbackQuery', { callback_query_id: cq.id, text: note });
