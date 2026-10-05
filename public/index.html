@@ -187,7 +187,8 @@ let isAdmin=false,curPage='home';
 
 /* ===== الاتصال بالخادم ===== */
 let ENR=[],TENR=[],SUBJ='',PROFILE={},FINAL=new Set();
-let db={tutors:[],requests:[],terms:[],ratings:{},edits:[],adminTutors:[],reports:[],subjReqs:[],tutorEdits:[],enrolls:[],badWords:[]},CFG={appLink:''},FAV=new Set();
+let CMP_KIND='student';
+let db={complaints:[],tutors:[],requests:[],terms:[],ratings:{},edits:[],adminTutors:[],reports:[],subjReqs:[],tutorEdits:[],enrolls:[],badWords:[]},CFG={appLink:''},FAV=new Set();
 async function api(method,url,body){
   const r=await fetch('/api'+url,{method,headers:{'Content-Type':'application/json','X-Tg-Init':(tg&&tg.initData)||''},body:body===undefined?undefined:JSON.stringify(body)});
   const j=await r.json().catch(()=>({}));
@@ -200,8 +201,8 @@ async function loadAll(){
     isAdmin=d.me.isAdmin;me.authed=d.me.authed;me.tutorId=d.me.tutorId;FAV=new Set(d.me.favorites||[]);ENR=d.me.enrollments||[];PROFILE=d.me.profile||{};FINAL=new Set(d.me.finalOpen||[]);TENR=d.me.tutorEnrollments||[];CFG=d.config||CFG;
     db.tutors=d.tutors;db.terms=d.terms;db.ratings={};
     d.ratings.forEach(x=>(db.ratings[x.tutor_id]=db.ratings[x.tutor_id]||[]).push({id:x.id,mine:x.mine,who:x.who,score:x.score,text:x.comment,explain:x.explain,style:x.style,coop:x.coop,at:x.created_at,term:x.term||'',reply:x.reply,replyAt:x.reply_at}));
-    db.requests=[];db.edits=[];db.adminTutors=[];db.reports=[];db.subjReqs=[];db.tutorEdits=[];db.enrolls=[];db.badWords=[];
-    if(isAdmin){const a=await api('GET','/admin/data');Object.assign(db,{requests:a.requests,edits:a.edits,adminTutors:a.tutors,reports:a.reports,subjReqs:a.subjectRequests,tutorEdits:a.tutorEdits,enrolls:a.enrollments,badWords:a.badWords})}
+    db.requests=[];db.edits=[];db.adminTutors=[];db.reports=[];db.complaints=[];db.subjReqs=[];db.tutorEdits=[];db.enrolls=[];db.badWords=[];
+    if(isAdmin){const a=await api('GET','/admin/data');Object.assign(db,{requests:a.requests,edits:a.edits,adminTutors:a.tutors,reports:a.reports,complaints:a.complaints||[],subjReqs:a.subjectRequests,tutorEdits:a.tutorEdits,enrolls:a.enrollments,badWords:a.badWords})}
   }catch(e){console.warn(e)}
 }
 async function run(p){try{await p;return true}catch(e){alert('خطأ: '+e.message);return false}}
@@ -390,12 +391,14 @@ function openCard(id){
     <button onclick="closeCard()" class="w-full text-sm text-slate-400 py-1.5">إغلاق</button></div>`;
   $('overlay').classList.remove('hidden');$('overlay').classList.add('flex');
 }
-function closeCard(){$('overlay').classList.add('hidden');$('overlay').classList.remove('flex')}
+function closeCard(){STU_OPEN=null;$('overlay').classList.add('hidden');$('overlay').classList.remove('flex')}
 function b64d(x){try{x=x.replace(/-/g,'+').replace(/_/g,'/');return new TextDecoder().decode(Uint8Array.from(atob(x),c=>c.charCodeAt(0)))}catch(e){return''}}
 function openDeepLink(){
+  if(!(tg&&tg.initData)&&CFG.appLink){try{const Q=new URLSearchParams(location.search),tt=Q.get('t'),rr0=Q.get('r'),j=CFG.appLink+(CFG.appLink.includes('?')?'&':'?')+'startapp=';if(tt){location.replace(j+'t_'+tt);return}if(rr0){location.replace(j+'r_'+rr0);return}}catch(e){}}
   if(me.tutorId)return;
   let P=new URLSearchParams(),sp=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param)||'';try{P=new URLSearchParams(location.search)}catch(e){}
   let t=P.get('t'),sub=P.get('s'),q=P.get('q');const rr=P.get('r');if(rr&&db.tutors.find(x=>x.id===rr)){openRate(rr);return}
+  if(/^r_/.test(sp)){const r2=sp.slice(2);if(db.tutors.find(x=>x.id===r2)){openRate(r2);return}}
   if(sp){if(/^t_/.test(sp))t=sp.slice(2);else if(/^s_/.test(sp))sub=b64d(sp.slice(2));else if(/^q_/.test(sp))q=b64d(sp.slice(2))}
   if(t&&db.tutors.find(x=>x.id===t)){openCard(t);return}
   if(sub){openSubject(sub);return}
@@ -417,7 +420,8 @@ function renderSubject(){
 
 /* ===== التسجيل عند الخصوصي ===== */
 const ST={pending:['بانتظار قبول الخصوصي','#f59e0b'],accepted:['تم قبولك','#10b981'],rejected:['لم يتم قبولك','#ef4444'],cancelled:['ملغي','#94a3b8']};
-const stChip=st=>`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold" style="background:${ST[st][1]}22;color:${ST[st][1]}">${ST[st][0]}</span>`;
+const STV={accepted:'تم قبوله',rejected:'لم يتم قبوله',pending:'بانتظار القبول'};
+const stChip=(st,v)=>`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold" style="background:${ST[st][1]}22;color:${ST[st][1]}">${v&&STV[st]?STV[st]:ST[st][0]}</span>`;
 function regBlock(t,i){
   const sn=t.subjects[i].name.trim();
   if(me.tutorId===t.id)return '';
@@ -471,41 +475,73 @@ function renderEnr(){
       <div class="flex items-center justify-between gap-2"><p class="font-bold"><i class="fa-solid fa-book text-slate-400"></i> ${esc(e.subject)}</p>${stChip(e.status)}</div>
       ${e.status==='accepted'?`<p class="${e.channel_added?'text-emerald-500':'text-amber-500'} font-bold">${e.channel_added?'✅ تمت إضافتك لقناة الشرح':'⏳ بانتظار إضافتك لقناة الشرح (خلال ٢٤ ساعة من القبول)'}</p>${e.price_due?`<div class="flex items-center justify-between"><span class="text-slate-400">المبلغ المطلوب</span><b>${e.price_due} ${SAR}${e.discount_pct?` <span class="text-emerald-500 text-[10px]">(خصم ${e.discount_pct}% • ${esc(e.code)})</span>`:''}</b></div>`:''}<div class="flex items-center justify-between"><span class="text-slate-400">الدفع</span>${payChip(e)}</div>${FINAL.has(e.tutor_id)?`<button onclick="openRate('${e.tutor_id}')" class="btn bg-amber-500">📅 قيّم تقييم نهاية الترم</button>`:''}${rateLeft(e)>0?`<p class="rounded-xl bg-slate-500/10 p-2.5 text-center text-[11px] font-bold text-slate-400"><i class="fa-solid fa-clock"></i> يفتح تقييم الخصوصي بعد ${rateLeft(e)} يوم، بعد ما تجرّب الشرح</p>`:`<button onclick="openRate('${e.tutor_id}')" class="btn bg-emerald-500">قيّم الخصوصي</button>`}`:''}
       ${e.status==='pending'?`<button onclick="cancelEnr('${e.id}')" class="btn bg-slate-500">إلغاء الطلب</button>`:''}</div>`).join('')}
-    ${contactBtns(t)}</div>`}).join('')||'<p class="text-center text-xs text-slate-400 p-6">لم تسجّل عند أي خصوصي بعد</p>';
+    ${contactBtns(t)}<button onclick="complainTutor('${tid}')" class="w-full py-2 rounded-xl border border-red-500/40 text-red-500 text-xs font-bold"><i class="fa-solid fa-triangle-exclamation"></i> رفع شكوى على الخصوصي</button></div>`}).join('')||'<p class="text-center text-xs text-slate-400 p-6">لم تسجّل عند أي خصوصي بعد</p>';
 }
-// صفحة الخصوصي: طلابه + الدفع
+// صفحة الخصوصي: قائمة طلابه، وبطاقة لكل طالب
+let STU_OPEN=null;
+const chSt=e=>e.channel_added?'added':(e.ch_state==='warned'||e.ch_state==='notyet')?e.ch_state:'wait';
+const chDot=e=>({added:['#10b981','في القناة'],wait:['#f59e0b','بانتظار الإضافة'],notyet:['#ef4444','لم يُضف'],warned:['#ef4444','إنذار تأخير']}[chSt(e)]);
 function renderStudents(){
   const list=TENR.filter(e=>['pending','accepted'].includes(e.status));
   const pend=list.filter(e=>e.status==='pending'),acc=list.filter(e=>e.status==='accepted');
-  const card=e=>{const link=e.username?`https://t.me/${esc(e.username)}`:`tg://user?id=${esc(e.tg_id)}`;
-    const late=e.status==='accepted'&&!e.channel_added&&e.accepted_at&&(Date.now()-new Date(e.accepted_at.replace(' ','T')+'Z').getTime())>864e5;
-    const ps=e.pay_status||'none';
-    return `<div class="rounded-2xl border ${e.status==='pending'?'border-amber-500/30 bg-amber-500/5':'border-emerald-500/20 bg-emerald-500/5'} p-3 space-y-2 text-xs">
-      <div class="flex items-center justify-between gap-2"><b class="truncate">${esc(e.who)}</b>${stChip(e.status)}</div>
-      <p class="text-slate-400"><i class="fa-solid fa-book"></i> ${esc(e.subject)} • <a href="${link}" target="_blank" class="text-blue-500 font-bold">${e.username?'@'+esc(e.username):'مراسلة الطالب'}</a></p>
-      ${e.price_due?`<p class="text-slate-400"><i class="fa-solid fa-money-bill"></i> المطلوب: <b>${e.price_due} ${SAR}</b>${e.discount_pct?` <span class="text-emerald-500">(كود ${esc(e.code)} • خصم ${e.discount_pct}%)</span>`:''}</p>`:''}
-      ${e.phone?`<p class="text-slate-400" dir="ltr" style="text-align:right"><i class="fa-solid fa-phone"></i> <a href="https://wa.me/${esc(e.phone)}" target="_blank" class="text-emerald-500 font-bold">+${esc(e.phone)}</a></p>`:''}
-      ${e.status==='pending'?`<div class="grid grid-cols-2 gap-2"><button onclick="tutorRespond('${e.id}','accept')" class="btn bg-emerald-500">قبول</button><button onclick="tutorRespond('${e.id}','reject')" class="btn bg-red-500">رفض</button></div>`:`
-      <p class="font-bold ${e.channel_added?'text-emerald-500':'text-amber-500'}">${e.channel_added?'✅ تمت إضافته لقناة الشرح':(late?'⚠️ تأخرت أكثر من ٢٤ ساعة، أضفه الحين':'هل أضفت الطالب لقناة الشرح؟ (خلال ٢٤ ساعة من القبول)')}</p>
-      <div class="grid grid-cols-2 gap-2">${e.channel_added?`<button onclick="tutorChannel('${e.id}',false)" class="btn bg-slate-500">تراجع</button>`:`<button onclick="tutorChannel('${e.id}',true)" class="btn bg-emerald-500">نعم، أضفته</button><button onclick="tutorChannel('${e.id}',false)" class="btn bg-slate-500">لا، لم أضفه بعد</button>`}</div>
-      <div class="rounded-xl bg-slate-500/10 p-2.5 space-y-2"><div class="flex items-center justify-between"><span class="font-black">هل دفع المبلغ؟</span>${payChip(e)}</div>
-        <div class="grid grid-cols-3 gap-1.5">${[['none','لم يدفع'],['partial','جزء'],['full','كامل']].map(([k,l])=>`<button onclick="setPay('${e.id}','${k}')" class="py-2 rounded-lg border text-[11px] font-bold ${ps===k?'bg-blue-500 text-white border-blue-500':'border-slate-500/40'}">${l}</button>`).join('')}</div>
-        ${ps==='partial'?`<div class="flex gap-2"><input id="pn_${e.id}" class="inp" maxlength="120" placeholder="اكتب المبلغ المدفوع (مثال: 100 ريال)" value="${esc(e.pay_note||'')}"><button onclick="savePayNote('${e.id}')" class="px-4 rounded-xl bg-blue-500 text-white text-xs font-bold shrink-0">حفظ</button></div>`:''}
-        ${ps!=='full'?`<button onclick="toggleRemind('${e.id}',${e.pay_remind===0?'true':'false'})" class="w-full text-[11px] font-bold py-1.5 rounded-lg border border-slate-500/30">${e.pay_remind===0?'🔕 التذكير متوقف — اضغط للتفعيل':'🔔 تذكير الطالب كل ٣ أيام — اضغط للإيقاف'}</button>`:''}
-        ${ps==='full'?`<input id="pn_${e.id}" class="inp" maxlength="120" placeholder="ملاحظة (اختياري)" value="${esc(e.pay_note||'')}" onchange="savePayNote('${e.id}')">`:''}</div>`}</div>`};
-  $('stuBox').innerHTML=(pend.length?`<p class="text-xs font-black text-amber-500">طلبات جديدة (${pend.length})</p>${pend.map(card).join('')}`:'')+
-    (acc.length?`<p class="text-xs font-black text-slate-400 pt-1">الطلاب المقبولون (${acc.length})</p>${acc.map(card).join('')}`:'')||'<p class="text-center text-xs text-slate-400 p-6">لا يوجد طلاب مسجلون بعد</p>';
+  const row=e=>{const d=chDot(e),red=e.status==='accepted'&&['notyet','warned'].includes(chSt(e));
+    return `<div class="rounded-2xl border ${e.status==='pending'?'border-amber-500/30 bg-amber-500/5':red?'border-red-500/40 bg-red-500/5':'border-slate-500/20 bg-slate-500/5'} p-3 space-y-2">
+      <button onclick="openStudent('${e.id}')" class="w-full flex items-center gap-3 text-right">
+        <span class="w-10 h-10 rounded-full bg-blue-500/15 text-blue-500 font-black flex items-center justify-center shrink-0">${esc((e.who||'?').trim().charAt(0))}</span>
+        <div class="min-w-0 flex-1"><b class="text-sm block truncate">${esc(e.who)}</b><p class="text-[11px] text-slate-400 truncate">${esc(e.subject)}</p></div>
+        <div class="flex flex-col items-end gap-1 shrink-0">${stChip(e.status,'t')}${e.status==='accepted'?`<span class="text-[10px] font-bold" style="color:${d[0]}">● ${d[1]}</span>`:''}</div>
+        <i class="fa-solid fa-chevron-left text-slate-400 text-xs"></i></button>
+      ${e.status==='pending'?`<div class="grid grid-cols-2 gap-2"><button onclick="tutorRespond('${e.id}','accept')" class="btn bg-emerald-500">قبول</button><button onclick="tutorRespond('${e.id}','reject')" class="btn bg-red-500">رفض</button></div>`:''}</div>`};
+  $('stuBox').innerHTML=(pend.length?`<p class="text-xs font-black text-amber-500">طلبات جديدة (${pend.length})</p>${pend.map(row).join('')}`:'')+
+    (acc.length?`<p class="text-xs font-black text-slate-400 pt-1">الطلاب المقبولون (${acc.length})</p>${acc.map(row).join('')}`:'')||'<p class="text-center text-xs text-slate-400 p-6">لا يوجد طلاب مسجلون بعد</p>';
 }
+function refreshStu(){renderStudents();if(STU_OPEN)openStudent(STU_OPEN)}
+const afterStu=()=>curPage==='students'?refreshStu():renderMe();
+function openStudent(id){
+  const e=TENR.find(x=>x.id===id);if(!e){closeCard();return}
+  STU_OPEN=id;const ps=e.pay_status||'none',cs=chSt(e),d=chDot(e),red=['notyet','warned'].includes(cs);
+  const tgl=e.username?`https://t.me/${esc(e.username)}`:`tg://user?id=${esc(e.tg_id)}`;
+  const day=x=>x?String(x).slice(0,10):'—';
+  const row=(k,v)=>`<div class="flex items-start justify-between gap-3 text-xs"><span class="text-slate-400 shrink-0">${k}</span><span class="font-bold text-left">${v}</span></div>`;
+  const chBlock=e.status!=='accepted'?'':`<div class="rounded-xl ${red?'bg-red-500/10 border border-red-500/30':'bg-slate-500/10'} p-3 space-y-2">
+      <p class="text-xs font-black" style="color:${d[0]}">${cs==='added'?'✅ تمت إضافته لقناة الشرح':cs==='warned'?'🚨 إنذار: تأخرت أكثر من ٣ أيام':cs==='notyet'?'🔴 لم تضفه بعد (نذكّرك مرتين، وبعد ٣ أيام يجيك إنذار)':'هل أضفت الطالب لقناة الشرح؟ (خلال ٢٤ ساعة من القبول)'}</p>
+      ${cs==='added'?`<button onclick="tutorChannel('${e.id}',false)" class="btn bg-slate-500">تراجع</button>`:`<div class="grid grid-cols-2 gap-2"><button onclick="tutorChannel('${e.id}',true)" class="btn bg-emerald-500">نعم، أضفته</button><button onclick="tutorChannel('${e.id}',false)" class="btn ${red?'bg-red-500':'bg-slate-500'}">${red?'🔴 ':''}لم أضفه بعد</button></div>`}
+      ${red?(e.delay_reason?`<p class="text-[11px] text-slate-400"><b>سبب التأخير:</b> ${esc(e.delay_reason)}</p>`:cs==='warned'?`<textarea id="dr_${e.id}" rows="2" maxlength="300" class="inp" placeholder="اكتب سبب التأخير (مطلوب)"></textarea><button onclick="submitDelay('${e.id}')" class="btn bg-red-500">إرسال سبب التأخير للإدارة</button>`:''):''}</div>`;
+  const payBlock=e.status!=='accepted'?'':`<div class="rounded-xl bg-slate-500/10 p-3 space-y-2"><div class="flex items-center justify-between"><span class="font-black text-xs">هل دفع المبلغ؟</span>${payChip(e)}</div>
+      <div class="grid grid-cols-3 gap-1.5">${[['none','لم يدفع'],['partial','جزء'],['full','كامل']].map(([k,l])=>`<button onclick="setPay('${e.id}','${k}')" class="py-2 rounded-lg border text-[11px] font-bold ${ps===k?'bg-blue-500 text-white border-blue-500':'border-slate-500/40'}">${l}</button>`).join('')}</div>
+      ${ps==='partial'?`<div class="flex gap-2"><input id="pn_${e.id}" class="inp" maxlength="120" placeholder="اكتب المبلغ المدفوع (مثال: 100 ريال)" value="${esc(e.pay_note||'')}"><button onclick="savePayNote('${e.id}')" class="px-4 rounded-xl bg-blue-500 text-white text-xs font-bold shrink-0">حفظ</button></div>`:''}
+      ${ps==='full'?`<input id="pn_${e.id}" class="inp" maxlength="120" placeholder="ملاحظة (اختياري)" value="${esc(e.pay_note||'')}" onchange="savePayNote('${e.id}')">`:''}
+      ${ps!=='full'?`<button onclick="toggleRemind('${e.id}',${e.pay_remind===0?'true':'false'})" class="w-full text-[11px] font-bold py-1.5 rounded-lg border border-slate-500/30">${e.pay_remind===0?'🔕 التذكير متوقف — اضغط للتفعيل':'🔔 تذكير الطالب كل ٣ أيام — اضغط للإيقاف'}</button>`:''}</div>`;
+  $('card').innerHTML=`<div class="glass tcard rounded-3xl p-5 space-y-3 pop">
+    <div class="flex items-center gap-3"><span class="w-12 h-12 rounded-full bg-blue-500/15 text-blue-500 font-black text-lg flex items-center justify-center shrink-0">${esc((e.who||'?').trim().charAt(0))}</span><div class="min-w-0 flex-1"><h3 class="font-black text-base">${esc(e.who)}</h3>${stChip(e.status,'t')}</div></div>
+    <div class="rounded-xl bg-slate-500/10 p-3 space-y-2">
+      ${row('المادة',esc(e.subject))}
+      ${row('الجوال',e.phone?`<a dir="ltr" href="https://wa.me/${esc(e.phone)}" target="_blank" class="text-emerald-500">+${esc(e.phone)}</a>`:'—')}
+      ${row('تليجرام',`<a href="${tgl}" target="_blank" class="text-blue-500">${e.username?'@'+esc(e.username):'مراسلة الطالب'}</a>`)}
+      ${row('تاريخ التسجيل',day(e.created_at))}
+      ${e.status==='accepted'?row('تاريخ القبول',day(e.accepted_at)):''}
+      ${e.price_due?row('المبلغ المطلوب',`${e.price_due} ${SAR}${e.discount_pct?` <span class="text-emerald-500 text-[10px]">(كود ${esc(e.code)} • خصم ${e.discount_pct}%)</span>`:''}`):''}</div>
+    ${e.status==='pending'?`<div class="grid grid-cols-2 gap-2"><button onclick="tutorRespond('${e.id}','accept')" class="btn bg-emerald-500">قبول</button><button onclick="tutorRespond('${e.id}','reject')" class="btn bg-red-500">رفض</button></div>`:''}
+    ${chBlock}${payBlock}
+    <div class="grid grid-cols-2 gap-2">${e.phone?`<a target="_blank" href="https://wa.me/${esc(e.phone)}" class="btn bg-emerald-500 !py-3"><i class="fa-brands fa-whatsapp"></i> واتساب</a>`:''}<a target="_blank" href="${tgl}" class="btn bg-sky-500 !py-3"><i class="fa-brands fa-telegram"></i> تليجرام</a></div>
+    <button onclick="complainStudent('${e.id}')" class="w-full py-2.5 rounded-xl border border-red-500/40 text-red-500 text-xs font-bold"><i class="fa-solid fa-triangle-exclamation"></i> رفع شكوى على الطالب</button>
+    <button onclick="closeCard()" class="w-full text-sm text-slate-400 py-1.5">إغلاق</button></div>`;
+  $('overlay').classList.remove('hidden');$('overlay').classList.add('flex');
+}
+async function submitDelay(id){const v=($('dr_'+id)||{}).value||'';if(v.trim().length<3)return alert('اكتب سبب التأخير');if(!await run(api('POST','/me/enrollments/'+id+'/delay-reason',{reason:v.trim()})))return;await loadAll();refreshStu();alert('تم إرسال السبب للإدارة')}
+async function sendComplaint(body){try{await api('POST','/complaints',body);alert('تم إرسال شكواك للإدارة');return true}catch(e){alert(e.status===409?'عندك شكوى قيد المراجعة بنفس الموضوع':e.message);return false}}
+async function complainStudent(id){const e=TENR.find(x=>x.id===id);if(!e)return;const v=await askText('شكوى على الطالب '+e.who,'اكتب تفاصيل الشكوى');if(v)sendComplaint({enrollment_id:id,text:v})}
+async function complainTutor(tid){if(!me.authed)return alert('افتح المنصة من داخل تليجرام أولاً');const t=db.tutors.find(x=>x.id===tid),v=await askText('شكوى على الخصوصي '+(t?t.name:''),'اكتب تفاصيل الشكوى');if(v)sendComplaint({tutor_id:tid,text:v})}
 async function setPay(id,st){
   const e=TENR.find(x=>x.id===id);if(e&&(e.pay_status||'none')===st)return;
   if(!await run(api('POST','/me/enrollments/'+id+'/payment',{status:st,note:''})))return;
-  await loadAll();renderStudents();
+  await loadAll();refreshStu();
 }
-async function toggleRemind(id,on){if(!await run(api('POST','/me/enrollments/'+id+'/remind',{on})))return;await loadAll();renderStudents()}
+async function toggleRemind(id,on){if(!await run(api('POST','/me/enrollments/'+id+'/remind',{on})))return;await loadAll();refreshStu()}
 async function savePayNote(id){
   const e=TENR.find(x=>x.id===id),n=($('pn_'+id)||{}).value||'';
   if(!await run(api('POST','/me/enrollments/'+id+'/payment',{status:e.pay_status,note:n.trim()})))return;
-  await loadAll();renderStudents();
+  await loadAll();refreshStu();
 }
 async function cancelEnr(id){if(!confirm('إلغاء طلب التسجيل؟'))return;try{await api('POST','/enrollments/'+id+'/cancel',{});await loadAll();renderEnr();renderHome()}catch(e){alert(e.message)}}
 
@@ -705,8 +741,12 @@ async function renderMe(){
     <button onclick="saveMe()" class="btn bg-blue-500"><i class="fa-solid fa-floppy-disk"></i> حفظ التغييرات</button>`;
   setAvail(t.availability||'available');trialMode('me');
 }
-async function tutorRespond(id,action){if(!await run(api('POST','/me/enrollments/'+id+'/respond',{action})))return;await loadAll();curPage==='students'?renderStudents():renderMe()}
-async function tutorChannel(id,added){if(!await run(api('POST','/me/enrollments/'+id+'/channel',{added})))return;await loadAll();curPage==='students'?renderStudents():renderMe()}
+async function resolveComplaint(id,withReply){
+  let reply='';if(withReply){const v=await askText('رد على الشاكي','اكتب ردك (يوصله في تليجرام)');if(v===null)return;reply=v}
+  if(!await run(api('POST','/admin/complaints/'+id+'/resolve',{reply})))return;await loadAll();renderAdmin();
+}
+async function tutorRespond(id,action){if(!await run(api('POST','/me/enrollments/'+id+'/respond',{action})))return;await loadAll();afterStu()}
+async function tutorChannel(id,added){if(!await run(api('POST','/me/enrollments/'+id+'/channel',{added})))return;await loadAll();afterStu()}
 async function addCode(){
   if(!await run(api('POST','/me/codes',{code:$('cdName').value.trim(),percent:+$('cdPct').value})))return;
   renderMe();
@@ -724,8 +764,8 @@ async function uploadMyPhoto(inp){
 
 /* ===== لوحة الإدارة ===== */
 let tab='tutors',editId=null,AD_IMG='';
-const TABS=[['tutors','<i class="fa-solid fa-chalkboard-user"></i> الخصوصيون'],['enrolls','<i class="fa-solid fa-clipboard-check"></i> التسجيلات'],['requests','<i class="fa-solid fa-inbox"></i> الطلبات'],['reports','<i class="fa-solid fa-flag"></i> البلاغات'],['tedits','<i class="fa-solid fa-user-pen"></i> تعديلات الخصوصيين'],['edits','<i class="fa-solid fa-pen-ruler"></i> تعديل التقييم'],['subjreq','<i class="fa-solid fa-book-medical"></i> المواد المطلوبة'],['stats','<i class="fa-solid fa-chart-line"></i> الإحصائيات'],['bcast','<i class="fa-solid fa-bullhorn"></i> إشعار عام'],['badwords','<i class="fa-solid fa-ban"></i> الكلمات المحظورة'],['terms','<i class="fa-solid fa-scroll"></i> الشروط'],['backup','<i class="fa-solid fa-database"></i> النسخ الاحتياطي']];
-const tabN=k=>({enrolls:db.enrolls.filter(e=>e.status==='pending').length,tedits:db.tutorEdits.length,requests:db.requests.length,reports:db.reports.length,edits:db.edits.length,subjreq:db.subjReqs.length}[k]||0);
+const TABS=[['tutors','<i class="fa-solid fa-chalkboard-user"></i> الخصوصيون'],['enrolls','<i class="fa-solid fa-clipboard-check"></i> التسجيلات'],['requests','<i class="fa-solid fa-inbox"></i> الطلبات'],['reports','<i class="fa-solid fa-flag"></i> البلاغات'],['complaints','<i class="fa-solid fa-triangle-exclamation"></i> الشكاوي'],['tedits','<i class="fa-solid fa-user-pen"></i> تعديلات الخصوصيين'],['edits','<i class="fa-solid fa-pen-ruler"></i> تعديل التقييم'],['subjreq','<i class="fa-solid fa-book-medical"></i> المواد المطلوبة'],['stats','<i class="fa-solid fa-chart-line"></i> الإحصائيات'],['bcast','<i class="fa-solid fa-bullhorn"></i> إشعار عام'],['badwords','<i class="fa-solid fa-ban"></i> الكلمات المحظورة'],['terms','<i class="fa-solid fa-scroll"></i> الشروط'],['backup','<i class="fa-solid fa-database"></i> النسخ الاحتياطي']];
+const tabN=k=>({enrolls:db.enrolls.filter(e=>e.status==='pending').length,tedits:db.tutorEdits.length,requests:db.requests.length,reports:db.reports.length,complaints:db.complaints.filter(c=>c.status==='open').length,edits:db.edits.length,subjreq:db.subjReqs.length}[k]||0);
 const sBtn='px-2 py-1 rounded-lg text-white';
 function renderAdmin(){
   if(!isAdmin){go('home');return}
@@ -752,6 +792,21 @@ function renderAdmin(){
     b.innerHTML=`<h3 class="font-bold text-sm">طلبات التسجيل</h3>`+(db.requests.map(r=>`<div class="rounded-2xl border border-amber-500/20 p-3 space-y-1 text-xs"><b>${esc(r.name)} ${flagOf(r.nationality)}</b> <span class="text-slate-400">${esc([r.gender,r.age?r.age+' سنة':''].filter(Boolean).join(' • '))} — ${new Date(r.created_at+'Z').toLocaleDateString('ar')}</span>
       <p class="text-slate-400">${esc(r.subjects.map(s=>`${s.name} (${s.price||'-'} ${SAR}) — ${s.targets||''}`).join('، '))}</p><p dir="ltr" class="text-slate-400">${esc(r.whatsapp)} ${esc(r.telegram)}</p>
       <div class="grid grid-cols-2 gap-2 pt-1"><button onclick="approve('${r.id}')" class="btn bg-emerald-500">قبول</button><button onclick="rejectReq('${r.id}')" class="btn bg-red-500">رفض</button></div></div>`).join('')||'<p class="text-xs text-slate-400 text-center">لا توجد طلبات</p>');
+  }else if(tab==='complaints'){
+    const all=db.complaints.filter(c=>c.kind===CMP_KIND),nOpen=k=>db.complaints.filter(c=>c.kind===k&&c.status==='open').length;
+    const wa=n=>n?`https://wa.me/${String(n).replace(/\D/g,'')}`:'',tgu=(u,id)=>u?(/^https?:/i.test(u)?u:'https://t.me/'+String(u).replace('@','')):(id?`tg://user?id=${id}`:'');
+    const lk=(h,ic,l,c)=>h?`<a target="_blank" href="${esc(h)}" class="px-2.5 py-1.5 rounded-lg text-white text-[11px] font-bold ${c}"><i class="${ic}"></i> ${l}</a>`:'';
+    const card=c=>{const stuWa=wa(c.stu_phone),stuTg=tgu(c.stu_user,c.stu_tg),tWa=wa(c.tutor_wa),tTg=tgu(c.tutor_tgu,c.tutor_tg);
+      return `<div class="rounded-2xl border ${c.status==='open'?'border-red-500/30':'border-slate-500/20 opacity-70'} p-3 space-y-2 text-xs">
+      <div class="flex items-center justify-between gap-2"><p><b>${esc(c.kind==='student'?c.stu_name:c.tutor_name)}</b> ← <b>${esc(c.kind==='student'?c.tutor_name:c.stu_name)}</b></p><span class="text-[10px] text-slate-400">${esc(String(c.created_at).slice(0,10))}</span></div>
+      <p class="text-slate-400">المادة: ${esc(c.subject||'—')}</p><p class="leading-relaxed">${esc(c.text)}</p>
+      ${c.admin_reply?`<p class="rounded-lg bg-blue-500/10 p-2 text-[11px]"><b class="text-blue-500">ردّ الإدارة:</b> ${esc(c.admin_reply)}</p>`:''}
+      <div class="flex flex-wrap gap-1.5"><span class="text-[10px] text-slate-400 w-full">الطالب:</span>${lk(stuWa,'fa-brands fa-whatsapp','واتساب','bg-emerald-500')}${lk(stuTg,'fa-brands fa-telegram','تليجرام','bg-sky-500')}<span class="text-[10px] text-slate-400 w-full">الخصوصي:</span>${lk(tWa,'fa-brands fa-whatsapp','واتساب','bg-emerald-500')}${lk(tTg,'fa-brands fa-telegram','تليجرام','bg-sky-500')}</div>
+      ${c.status==='open'?`<div class="grid grid-cols-2 gap-2 pt-1"><button onclick="resolveComplaint('${c.id}',true)" class="btn bg-blue-500">رد وإغلاق</button><button onclick="resolveComplaint('${c.id}',false)" class="btn bg-slate-500">إغلاق</button></div>`:'<p class="text-[10px] text-slate-400">مغلقة</p>'}</div>`};
+    b.innerHTML=`<h3 class="font-bold text-sm">الشكاوي</h3>
+      <div class="grid grid-cols-2 gap-2">${[['student','شكاوي الطلاب'],['tutor','شكاوي الخصوصيين']].map(([k,l])=>`<button onclick="CMP_KIND='${k}';renderAdmin()" class="py-2.5 rounded-xl text-xs font-bold border ${CMP_KIND===k?'bg-red-500 text-white border-red-500':'border-slate-500/40'}">${l}${nOpen(k)?' ('+nOpen(k)+')':''}</button>`).join('')}</div>`+
+      (all.length?all.map(card).join(''):'<p class="text-xs text-slate-400 text-center p-4">لا توجد شكاوي</p>');
+
   }else if(tab==='reports'){
     b.innerHTML=`<h3 class="font-bold text-sm">البلاغات</h3>`+(db.reports.map(r=>`<div class="rounded-2xl border border-red-500/20 p-3 space-y-1 text-xs">
       <p><b>${esc(r.who)}</b> يبلّغ عن ${r.kind==='review'?'تقييم':'الخصوصي'}: <b>${esc(r.tutor_name||'—')}</b></p>
@@ -814,7 +869,7 @@ function renderAdmin(){
 async function adPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;try{AD_IMG=await resizeImg(f)}catch(e){alert(e.message)}}
 async function done(p){if(await run(p)){await loadAll();renderAdmin()}}
 function saveTutor(){
-  const o=readForm('ad');if(!o)return;o.rating=+$('adrating').value||0;o.tg_id=$('adtg').value.replace(/[٠-٩]/g,d=>d.charCodeAt(0)-1632).replace(/[۰-۹]/g,d=>d.charCodeAt(0)-1776).replace(/[\s\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff,،]/g,'');if(AD_IMG)o.image=AD_IMG;
+  const o=readForm('ad');if(!o)return;o.rating=+$('adrating').value||0;o.tg_id=$('adtg').value.normalize('NFKC').replace(/[٠-٩]/g,d=>d.charCodeAt(0)-1632).replace(/[۰-۹]/g,d=>d.charCodeAt(0)-1776).replace(/[^\p{L}\p{N}]/gu,'');if(AD_IMG)o.image=AD_IMG;
   const id=editId;editId=null;AD_IMG='';done(id?api('PUT','/admin/tutors/'+id,o):api('POST','/admin/tutors',o));
 }
 function adminEnr(id,action){done(api('POST','/admin/enrollments/'+id+'/respond',{action}))}
