@@ -32,6 +32,28 @@ const TRUST_PROXY = env.TRUST_PROXY === '1';
 const APP_LINK = (env.APP_LINK || '').trim();           // مثال: https://t.me/MyBot/app (اختياري، لروابط المشاركة)
 const BACKUP_TO_TELEGRAM = env.BACKUP_TO_TELEGRAM === '1';
 const TG_API = (env.TG_API || 'https://api.telegram.org').replace(/\/$/, '');
+const RATE_DELAY_DAYS = Math.max(0, +(env.RATE_DELAY_DAYS ?? 14) || 0);
+/* نهاية الترم: ٢٠ رجب (التقويم الهجري - أم القرى) */
+const _hf = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', { timeZone: 'Asia/Riyadh', year: 'numeric', month: 'numeric', day: 'numeric' });
+const _df = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh' });
+const hijriOf = d => { const p = {}; for (const x of _hf.formatToParts(d)) p[x.type] = x.value; return { y: +p.year, m: +p.month, d: +p.day }; };
+function termEndAfter(from) {
+  for (let i = 1; i <= 400; i++) {
+    const t = new Date(from.getTime() + i * 864e5), h = hijriOf(t);
+    if (h.m === 7 && h.d === 20) return { key: String(h.y), date: _df.format(t), at: new Date(_df.format(t) + 'T00:00:00+03:00') };
+  }
+  return null;
+}
+const FINAL_WINDOW_DAYS = 60, termCache = new Map();
+const termOf = ts => { const k = String(ts).slice(0, 10); if (!termCache.has(k)) termCache.set(k, termEndAfter(new Date(String(ts).replace(' ', 'T') + 'Z'))); return termCache.get(k); };
+const termEndedRecently = t => t && t.at.getTime() <= Date.now() && Date.now() - t.at.getTime() <= FINAL_WINDOW_DAYS * 864e5;
+function finalOpenFor(tgId) {
+  const out = new Map();
+  for (const e of all(`SELECT tutor_id, COALESCE(accepted_at,updated_at) at FROM enrollments WHERE tg_id=? AND status='accepted'`, tgId)) {
+    const t = termOf(e.at); if (termEndedRecently(t)) out.set(e.tutor_id, t.key);
+  }
+  return [...out].filter(([tid, key]) => !get('SELECT 1 x FROM ratings WHERE tutor_id=? AND tg_id=? AND term=?', tid, tgId, key)).map(([tid, key]) => ({ tutor_id: tid, term: key }));
+}
 const PUBLIC_URL = (env.PUBLIC_URL || (env.DOMAIN ? 'https://' + env.DOMAIN : '')).replace(/\/$/, '');
 let BOT_USERNAME = '';
 const MAX_AGE = +env.INITDATA_MAX_AGE || 60 * 60 * 24 * 2; // صلاحية توقيع تليجرام (ثانية)
@@ -101,6 +123,20 @@ CREATE TABLE IF NOT EXISTS bad_words(word TEXT PRIMARY KEY);
 CREATE INDEX IF NOT EXISTS ev_idx ON events(type, ts);
 `);
 addCol('enrollments', 'accepted_at', 'TEXT');
+addCol('enrollments', 'phone', "TEXT DEFAULT ''");
+addCol('users', 'full_name', "TEXT DEFAULT ''");
+addCol('users', 'phone', "TEXT DEFAULT ''");
+for (const [c, d] of [['last_pay_reminder', 'TEXT'], ['pay_remind', 'INTEGER DEFAULT 1'], ['final_notified', "TEXT DEFAULT ''"], ['code', "TEXT DEFAULT ''"], ['discount_pct', 'INTEGER DEFAULT 0'], ['price_due', 'INTEGER DEFAULT 0']]) addCol('enrollments', c, d);
+// السماح بتقييم ثاني (نهاية الترم): نعيد بناء جدول التقييمات مرة وحدة لإضافة عمود term
+if (!colsOf('ratings').includes('term')) {
+  db.exec(`BEGIN;
+  CREATE TABLE ratings_new(id TEXT PRIMARY KEY, created_at TEXT DEFAULT (datetime('now')), tutor_id TEXT REFERENCES tutors(id) ON DELETE CASCADE, tg_id TEXT, who TEXT,
+    score INTEGER, explain INTEGER, style INTEGER, coop INTEGER, comment TEXT DEFAULT '', reply TEXT DEFAULT '', reply_at TEXT, term TEXT DEFAULT '', UNIQUE(tutor_id, tg_id, term));
+  INSERT INTO ratings_new(id,created_at,tutor_id,tg_id,who,score,explain,style,coop,comment,reply,reply_at) SELECT id,created_at,tutor_id,tg_id,who,score,explain,style,coop,comment,reply,reply_at FROM ratings;
+  DROP TABLE ratings; ALTER TABLE ratings_new RENAME TO ratings; COMMIT;`);
+}
+db.exec(`CREATE TABLE IF NOT EXISTS invite_codes(tutor_id TEXT REFERENCES tutors(id) ON DELETE CASCADE, code TEXT, percent INTEGER, created_at TEXT DEFAULT (datetime('now')), PRIMARY KEY(tutor_id, code));`);
+db.exec(`CREATE TABLE IF NOT EXISTS bot_inbox(chat_id TEXT, msg_id INTEGER, user_tg TEXT, ts TEXT DEFAULT (datetime('now')), PRIMARY KEY(chat_id, msg_id));`);
 addCol('enrollments', 'overdue_notified', 'INTEGER DEFAULT 0');
 addCol('enrollments', 'pay_status', "TEXT DEFAULT 'none'");
 addCol('enrollments', 'pay_note', "TEXT DEFAULT ''");
@@ -252,12 +288,12 @@ route('GET', '/api/bootstrap', ctx => {
   }
   const badges = computeBadges();
   return {
-    me: { authed: !!u, id: u?.id || null, name: u?.name || null, isAdmin: !!u?.isAdmin, tutorId, favorites,
-      enrollments: u ? all(`SELECT e.id,e.tutor_id,e.subject,e.status,e.channel_added,e.accepted_at,e.pay_status,e.pay_note,e.created_at,t.name tutor_name FROM enrollments e JOIN tutors t ON t.id=e.tutor_id WHERE e.tg_id=? ORDER BY e.created_at DESC`, u.id) : [],
-      tutorEnrollments: tutorId ? all(`SELECT id,subject,who,username,tg_id,status,channel_added,accepted_at,pay_status,pay_note,created_at FROM enrollments WHERE tutor_id=? ORDER BY created_at DESC`, tutorId) : [] },
-    config: { appLink: APP_LINK },
+    me: { authed: !!u, id: u?.id || null, name: u?.name || null, isAdmin: !!u?.isAdmin, tutorId, favorites, finalOpen: u ? finalOpenFor(u.id).map(x => x.tutor_id) : [], profile: u ? (get('SELECT full_name,phone FROM users WHERE tg_id=?', u.id) || {}) : {},
+      enrollments: u ? all(`SELECT e.id,e.tutor_id,e.subject,e.status,e.channel_added,COALESCE(e.accepted_at,e.updated_at) accepted_at,e.pay_status,e.pay_note,e.code,e.discount_pct,e.price_due,e.created_at,t.name tutor_name FROM enrollments e JOIN tutors t ON t.id=e.tutor_id WHERE e.tg_id=? ORDER BY e.created_at DESC`, u.id) : [],
+      tutorEnrollments: tutorId ? all(`SELECT id,subject,who,phone,username,tg_id,status,channel_added,COALESCE(accepted_at,updated_at) accepted_at,pay_status,pay_note,pay_remind,code,discount_pct,price_due,created_at FROM enrollments WHERE tutor_id=? ORDER BY created_at DESC`, tutorId) : [] },
+    config: { appLink: APP_LINK, rateDelayDays: RATE_DELAY_DAYS, termEnd: (() => { const t = termEndAfter(new Date(Date.now() - 864e5)); return t ? { key: t.key, date: t.date } : null; })() },
     tutors: all(`SELECT * FROM tutors WHERE status='active' ORDER BY created_at`).map(r => ({ ...pubTutor(r), badges: badges[r.id] || [] })),
-    ratings: all(`SELECT r.id,r.tutor_id,r.tg_id,r.who,r.score,r.explain,r.style,r.coop,r.comment,r.reply,r.reply_at,r.created_at
+    ratings: all(`SELECT r.id,r.tutor_id,r.tg_id,r.who,r.score,r.explain,r.style,r.coop,r.comment,r.reply,r.reply_at,r.term,r.created_at
                   FROM ratings r JOIN tutors t ON t.id=r.tutor_id WHERE t.status='active' ORDER BY r.created_at`)
       .map(({ tg_id, ...r }) => ({ ...r, mine: !!u && tg_id === u.id })),
     terms: all('SELECT * FROM terms ORDER BY sort')
@@ -278,24 +314,29 @@ route('POST', '/api/requests', async ctx => {
 route('POST', '/api/ratings', ctx => {
   const u = needUser(ctx), b = ctx.body;
   if (!get('SELECT 1 x FROM tutors WHERE id=?', String(b.tutor_id))) throw new HttpError(404, 'الخصوصي غير موجود');
-  if (!get(`SELECT 1 x FROM enrollments WHERE tutor_id=? AND tg_id=? AND status='accepted'`, String(b.tutor_id), u.id))
-    throw new HttpError(403, 'تقدر تقيّم الخصوصي بعد ما يقبل تسجيلك عنده', 'not_enrolled');
+  const isFinal = !!b.final;
+  if (isFinal && !finalOpenFor(u.id).some(x => x.tutor_id === String(b.tutor_id))) throw new HttpError(403, 'تقييم نهاية الترم غير متاح لك الآن', 'no_final');
+  const finalTerm = isFinal ? finalOpenFor(u.id).find(x => x.tutor_id === String(b.tutor_id)).term : '';
+  const accs = all(`SELECT COALESCE(accepted_at,updated_at) at FROM enrollments WHERE tutor_id=? AND tg_id=? AND status='accepted'`, String(b.tutor_id), u.id);
+  if (!accs.length) throw new HttpError(403, 'تقدر تقيّم الخصوصي بعد ما يقبل تسجيلك عنده', 'not_enrolled');
+  const left = Math.min(...accs.map(a => Math.ceil(RATE_DELAY_DAYS - (Date.now() - new Date(a.at.replace(' ', 'T') + 'Z').getTime()) / 864e5)));
+  if (!isFinal && left > 0) throw new HttpError(403, `التقييم يفتح بعد ${left} يوم من قبول تسجيلك، عشان يكون تقييمك بعد ما تجرّب الشرح`, 'too_early');
   clean(String(b.comment || ''));
   const v = {};
   for (const k of ['explain', 'style', 'coop']) { v[k] = +b[k]; if (!Number.isInteger(v[k]) || v[k] < 1 || v[k] > 100) throw bad('قيمة التقييم غير صحيحة'); }
   const score = Math.round((v.explain + v.style + v.coop) / 3);
   try {
-    run('INSERT INTO ratings(id,tutor_id,tg_id,who,score,explain,style,coop,comment) VALUES(?,?,?,?,?,?,?,?,?)',
-      uuid(), b.tutor_id, u.id, u.name, score, v.explain, v.style, v.coop, str(b.comment, 500));
+    run('INSERT INTO ratings(id,tutor_id,tg_id,who,score,explain,style,coop,comment,term) VALUES(?,?,?,?,?,?,?,?,?,?)',
+      uuid(), b.tutor_id, u.id, u.name, score, v.explain, v.style, v.coop, str(b.comment, 500), finalTerm);
   } catch (e) { if (/UNIQUE/.test(e.message)) throw new HttpError(409, 'سبق أن قيّمت هذا الخصوصي', 'exists'); throw e; }
-  notify(get('SELECT tg_id FROM tutors WHERE id=?', b.tutor_id)?.tg_id, `⭐ تقييم جديد (${score}/100) من ${u.name}`);
+  notify(get('SELECT tg_id FROM tutors WHERE id=?', b.tutor_id)?.tg_id, `⭐ ${isFinal ? 'تقييم نهاية الترم' : 'تقييم جديد'} (${score}/100) من ${u.name}`);
   return { ok: true };
 });
 
 // طلب تعديل تقييم
 route('POST', '/api/rating-edits', ctx => {
   const u = needUser(ctx), b = ctx.body;
-  if (!get('SELECT 1 x FROM ratings WHERE tutor_id=? AND tg_id=?', String(b.tutor_id), u.id)) throw bad('لا يوجد تقييم سابق لتعديله');
+  if (!get('SELECT 1 x FROM ratings WHERE tutor_id=? AND tg_id=? AND term=\'\'', String(b.tutor_id), u.id)) throw bad('لا يوجد تقييم سابق لتعديله');
   try { run('INSERT INTO rating_edits(id,tutor_id,tg_id,who,reason) VALUES(?,?,?,?,?)', uuid(), b.tutor_id, u.id, u.name, str(b.reason, 300)); }
   catch (e) { if (/UNIQUE/.test(e.message)) throw new HttpError(409, 'لديك طلب تعديل قيد المراجعة', 'pending'); throw e; }
   for (const a of ADMIN_IDS) notify(a, `✏️ طلب تعديل تقييم من ${u.name}`);
@@ -435,7 +476,7 @@ route('GET', '/api/admin/data', ctx => {
     tutors: all('SELECT * FROM tutors ORDER BY created_at').map(adminTutor),
     reports: all(`SELECT p.id,p.created_at,p.who,p.kind,p.tutor_id,p.rating_id,p.reason,t.name tutor_name,r.comment,r.who rater,r.score
                   FROM reports p LEFT JOIN tutors t ON t.id=p.tutor_id LEFT JOIN ratings r ON r.id=p.rating_id WHERE p.status='open' ORDER BY p.created_at`),
-    enrollments: all(`SELECT e.id,e.subject,e.who,e.username,e.status,e.channel_added,e.created_at,t.name tutor_name,t.tg_id tutor_tg FROM enrollments e JOIN tutors t ON t.id=e.tutor_id ORDER BY e.created_at DESC LIMIT 300`),
+    enrollments: all(`SELECT e.id,e.subject,e.who,e.phone,e.username,e.status,e.channel_added,e.created_at,t.name tutor_name,t.tg_id tutor_tg FROM enrollments e JOIN tutors t ON t.id=e.tutor_id ORDER BY e.created_at DESC LIMIT 300`),
     badWords: all('SELECT word FROM bad_words').map(r => r.word),
     tutorEdits: all(`SELECT e.id,e.created_at,e.tutor_id,e.changes,t.name,t.whatsapp,t.telegram,t.subjects,t.bio,t.photo FROM tutor_edits e JOIN tutors t ON t.id=e.tutor_id ORDER BY e.created_at`).map(r => {
       const c = JSON.parse(r.changes); if (c.subjects) c.subjects = JSON.parse(c.subjects);
@@ -506,7 +547,7 @@ route('DELETE', '/api/admin/requests/:id', ctx => {
 route('POST', '/api/admin/edits/:id/allow', ctx => {
   needAdmin(ctx);
   const e = get('SELECT * FROM rating_edits WHERE id=?', ctx.params.id); if (!e) throw new HttpError(404, 'الطلب غير موجود');
-  tx(() => { run('DELETE FROM ratings WHERE tutor_id=? AND tg_id=?', e.tutor_id, e.tg_id); run('DELETE FROM rating_edits WHERE id=?', e.id); });
+  tx(() => { run(`DELETE FROM ratings WHERE tutor_id=? AND tg_id=? AND term=''`, e.tutor_id, e.tg_id); run('DELETE FROM rating_edits WHERE id=?', e.id); });
   notify(e.tg_id, '✏️ وافقت الإدارة على طلب تعديل تقييمك، تقدر تقيّم الخصوصي من جديد.');
   return { ok: true };
 });
@@ -578,9 +619,7 @@ route('GET', '/api/admin/stats', ctx => {
   };
 });
 let broadcasting = false;
-route('POST', '/api/admin/broadcast', ctx => {
-  needAdmin(ctx);
-  const text = str(ctx.body.text, 1000); if (text.length < 2) throw bad('اكتب نص الرسالة');
+function startBroadcast(text) {
   if (broadcasting) throw bad('هناك إرسال جارٍ، انتظر حتى ينتهي');
   const users = all('SELECT tg_id FROM users WHERE blocked=0');
   broadcasting = true;
@@ -594,7 +633,12 @@ route('POST', '/api/admin/broadcast', ctx => {
     broadcasting = false;
     for (const a of ADMIN_IDS) notify(a, `📢 اكتمل الإرسال: وصلت الرسالة إلى ${ok} من ${users.length}`);
   })().catch(() => { broadcasting = false; });
-  return { ok: true, total: users.length };
+  return users.length;
+}
+route('POST', '/api/admin/broadcast', ctx => {
+  needAdmin(ctx);
+  const text = str(ctx.body.text, 1000); if (text.length < 2) throw bad('اكتب نص الرسالة');
+  return { ok: true, total: startBroadcast(text) };
 });
 route('POST', '/api/admin/subject-requests/clear', ctx => { needAdmin(ctx); run('DELETE FROM subject_requests WHERE LOWER(TRIM(subject))=LOWER(TRIM(?))', String(ctx.body.subject || '')); return { ok: true }; });
 route('GET', '/healthz', () => ({ ok: true }));
@@ -679,19 +723,28 @@ const getEnr = id => get(`SELECT e.*, t.name tutor_name, t.tg_id tutor_tg FROM e
 const who = e => e.username ? `${e.who} (@${e.username})` : `${e.who} (آيدي ${e.tg_id})`;
 route('POST', '/api/enrollments', ctx => {
   const u = needUser(ctx), b = ctx.body;
+  const fullName = str(b.full_name, 80).replace(/\s+/g, ' ');
+  if (fullName.split(' ').filter(w => w.length >= 2).length < 3 || !/^[\p{L}\s]+$/u.test(fullName)) throw bad('اكتب اسمك الثلاثي (ثلاث كلمات) بالحروف فقط');
+  const ph = String(b.phone || '').replace(/[\s\-+]/g, '').replace(/^966/, '');
+  if (!/^0?5\d{8}$/.test(ph)) throw bad('رقم الجوال لازم يكون سعودي: يبدأ بـ 05 ويتكون من 10 أرقام');
+  const phone = '966' + ph.replace(/^0/, '');
+  run('UPDATE users SET full_name=?,phone=? WHERE tg_id=?', fullName, phone, u.id);
   const t = get(`SELECT * FROM tutors WHERE id=? AND status='active'`, String(b.tutor_id || '')); if (!t) throw new HttpError(404, 'الخصوصي غير موجود');
   if (t.tg_id && t.tg_id === u.id) throw bad('لا يمكنك التسجيل عند نفسك');
   if (t.availability === 'full') throw bad('هذا الخصوصي ممتلئ حالياً');
   const subject = String(b.subject || '').trim();
-  if (!JSON.parse(t.subjects || '[]').some(x => x.name.trim() === subject)) throw bad('المادة غير موجودة عند هذا الخصوصي');
+  const sp = JSON.parse(t.subjects || '[]').find(x => x.name.trim() === subject); if (!sp) throw bad('المادة غير موجودة عند هذا الخصوصي');
+  let pct = 0, codeUsed = '';
+  if (String(b.code || '').trim()) { const c = get('SELECT * FROM invite_codes WHERE tutor_id=? AND code=?', t.id, normCode(b.code)); if (!c) throw bad('كود الخصم غير صحيح'); pct = c.percent; codeUsed = c.code; }
+  const priceDue = Math.round((+sp.price || 0) * (100 - pct) / 100);
   const ex = get('SELECT * FROM enrollments WHERE tutor_id=? AND subject=? AND tg_id=?', t.id, subject, u.id);
   if (ex && ['pending', 'accepted'].includes(ex.status)) throw new HttpError(409, 'سبق أن سجّلت في هذه المادة', 'exists');
   if (get(`SELECT COUNT(*) c FROM enrollments WHERE tg_id=? AND status='pending'`, u.id).c >= 10) throw bad('لديك طلبات تسجيل كثيرة قيد الانتظار');
   const id = ex ? ex.id : uuid();
-  if (ex) run(`UPDATE enrollments SET status='pending',channel_added=0,accepted_at=NULL,overdue_notified=0,pay_status='none',pay_note='',username=?,who=?,updated_at=datetime('now') WHERE id=?`, u.username || '', u.name, id);
-  else run('INSERT INTO enrollments(id,tutor_id,subject,tg_id,who,username) VALUES(?,?,?,?,?,?)', id, t.id, subject, u.id, u.name, u.username || '');
+  if (ex) run(`UPDATE enrollments SET status='pending',channel_added=0,accepted_at=NULL,overdue_notified=0,pay_status='none',pay_note='',username=?,who=?,phone=?,code=?,discount_pct=?,price_due=?,last_pay_reminder=NULL,final_notified='',updated_at=datetime('now') WHERE id=?`, u.username || '', fullName, phone, codeUsed, pct, priceDue, id);
+  else run('INSERT INTO enrollments(id,tutor_id,subject,tg_id,who,username,phone,code,discount_pct,price_due) VALUES(?,?,?,?,?,?,?,?,?,?)', id, t.id, subject, u.id, fullName, u.username || '', phone, codeUsed, pct, priceDue);
   const e = getEnr(id), acts = kb([[{ text: '✅ قبول', callback_data: `e:${id}:acc` }, { text: '❌ رفض', callback_data: `e:${id}:rej` }]]);
-  notify(t.tg_id, `📥 طالب جديد سجّل عندك\nالطالب: ${who(e)}\nالمادة: ${subject}`, acts);
+  notify(t.tg_id, `📥 طالب جديد سجّل عندك\nالطالب: ${who(e)}\nالجوال: +${phone}\nالمادة: ${subject}${codeUsed ? `\nكود الخصم: ${codeUsed} (${pct}%) ← المطلوب ${priceDue} ريال` : ''}`, acts);
   for (const a of ADMIN_IDS) notify(a, `📝 الطالب ${who(e)} سجّل عند الخصوصي ${t.name}\nالمادة: ${subject}\nالحالة: ${STATUS_AR.pending}${t.tg_id ? '' : '\n(هذا الخصوصي غير مربوط بحساب تليجرام، قرّر أنت)'}`, t.tg_id ? undefined : acts);
   return { ok: true };
 });
@@ -730,6 +783,7 @@ route('POST', '/api/me/enrollments/:id/payment', ctx => {
 // تنبيه: الخصوصي لازم يضيف الطالب للقناة خلال ٢٤ ساعة من القبول
 function remindOverdue() {
   try {
+    run(`DELETE FROM bot_inbox WHERE ts < datetime('now','-30 days')`);
     for (const e of all(`SELECT e.id FROM enrollments e WHERE e.status='accepted' AND e.channel_added=0 AND COALESCE(e.overdue_notified,0)=0 AND COALESCE(e.accepted_at,e.updated_at) <= datetime('now','-24 hours')`)) {
       const x = getEnr(e.id); run('UPDATE enrollments SET overdue_notified=1 WHERE id=?', x.id);
       notify(x.tutor_tg, `⏰ تنبيه: مرّت ٢٤ ساعة على قبول الطالب ${who(x)} (${x.subject}) ولم تضفه إلى قناة الشرح.\nأضفه الحين ثم اضغط «أضفته».`, kb([[{ text: '✅ أضفته', callback_data: `e:${x.id}:ch1` }]]));
@@ -739,6 +793,54 @@ function remindOverdue() {
 }
 setTimeout(remindOverdue, 20_000).unref();
 setInterval(remindOverdue, 15 * 60_000).unref();
+const normCode = c => String(c || '').trim().toUpperCase().replace(/\s+/g, '');
+route('GET', '/api/me/codes', ctx => {
+  const t = myTutor(ctx);
+  return { codes: all(`SELECT c.code,c.percent,c.created_at,(SELECT COUNT(*) FROM enrollments e WHERE e.tutor_id=c.tutor_id AND e.code=c.code AND e.status IN ('pending','accepted')) uses FROM invite_codes c WHERE c.tutor_id=? ORDER BY c.created_at`, t.id) };
+});
+route('POST', '/api/me/codes', ctx => {
+  const t = myTutor(ctx), code = normCode(ctx.body.code), percent = +ctx.body.percent;
+  if (!/^[\p{L}\p{N}_-]{3,20}$/u.test(code)) throw bad('الكود من ٣ إلى ٢٠ حرف أو رقم بدون مسافات');
+  if (!Number.isInteger(percent) || percent < 1 || percent > 90) throw bad('نسبة الخصم رقم صحيح من 1 إلى 90');
+  if (get('SELECT 1 x FROM invite_codes WHERE tutor_id=? AND code=?', t.id, code)) throw new HttpError(409, 'هذا الكود موجود عندك، احذفه أولاً لو تبي تغيّر نسبته');
+  if (get('SELECT COUNT(*) c FROM invite_codes WHERE tutor_id=?', t.id).c >= 5) throw bad('الحد الأقصى ٥ أكواد');
+  run('INSERT INTO invite_codes(tutor_id,code,percent) VALUES(?,?,?)', t.id, code, percent); return { ok: true };
+});
+route('POST', '/api/me/codes/remove', ctx => { const t = myTutor(ctx); run('DELETE FROM invite_codes WHERE tutor_id=? AND code=?', t.id, normCode(ctx.body.code)); return { ok: true }; });
+route('POST', '/api/codes/check', ctx => {
+  needUser(ctx); const b = ctx.body, t = get(`SELECT * FROM tutors WHERE id=? AND status='active'`, String(b.tutor_id || ''));
+  const c = t && get('SELECT * FROM invite_codes WHERE tutor_id=? AND code=?', t.id, normCode(b.code)); if (!c) throw bad('كود الخصم غير صحيح');
+  const sp = JSON.parse(t.subjects || '[]').find(x => x.name.trim() === String(b.subject || '').trim()); const price = +sp?.price || 0;
+  return { percent: c.percent, price, due: Math.round(price * (100 - c.percent) / 100) };
+});
+route('POST', '/api/me/enrollments/:id/remind', ctx => { const e = myEnr(ctx); run('UPDATE enrollments SET pay_remind=? WHERE id=?', ctx.body.on ? 1 : 0, e.id); return { ok: true }; });
+
+// تذكير الطالب بالدفع كل ٣ أيام (لين يدفع كامل أو يوقف الخصوصي التذكير)
+function remindPayments() {
+  try {
+    for (const r of all(`SELECT id FROM enrollments WHERE status='accepted' AND COALESCE(pay_status,'none')<>'full' AND COALESCE(pay_remind,1)=1 AND COALESCE(last_pay_reminder,COALESCE(accepted_at,updated_at)) <= datetime('now','-3 days')`)) {
+      const x = getEnr(r.id); run(`UPDATE enrollments SET last_pay_reminder=datetime('now') WHERE id=?`, x.id);
+      notify(x.tg_id, `💰 تذكير بالدفع\nمادة ${x.subject} عند الخصوصي ${x.tutor_name}.${x.price_due ? `\nالمبلغ المطلوب: ${x.price_due} ريال${x.discount_pct ? ` (بعد خصم ${x.discount_pct}%)` : ''}` : ''}${x.pay_status === 'partial' ? `\nدفعت جزءاً${x.pay_note ? ': ' + x.pay_note : ''}، تبقّى إكمال المبلغ.` : ''}\nتواصل مع الخصوصي لإتمام الدفع.`);
+    }
+  } catch (err) { console.error('remindPayments failed', err.message); }
+}
+// تنبيه تقييم نهاية الترم (٢٠ رجب)
+function notifyFinalRatings() {
+  try {
+    const sent = new Set();
+    for (const e of all(`SELECT id, tg_id, tutor_id, final_notified, COALESCE(accepted_at,updated_at) at FROM enrollments WHERE status='accepted'`)) {
+      const t = termOf(e.at); if (!termEndedRecently(t) || e.final_notified === t.key) continue;
+      run('UPDATE enrollments SET final_notified=? WHERE id=?', t.key, e.id);
+      const k = e.tg_id + '|' + e.tutor_id + '|' + t.key; if (sent.has(k)) continue; sent.add(k);
+      if (get('SELECT 1 x FROM ratings WHERE tutor_id=? AND tg_id=? AND term=?', e.tutor_id, e.tg_id, t.key)) continue;
+      const tn = get('SELECT name FROM tutors WHERE id=?', e.tutor_id)?.name || '';
+      notify(e.tg_id, `📅 انتهى الترم (٢٠ رجب ${t.key}هـ)\nقيّم الخصوصي ${tn} تقييم نهاية الترم عشان يستفيد منه الطلاب الجدد.`,
+        PUBLIC_URL ? kb([[{ text: '⭐ قيّم الآن', web_app: { url: `${PUBLIC_URL}/?r=${e.tutor_id}` } }]]) : undefined);
+    }
+  } catch (err) { console.error('notifyFinalRatings failed', err.message); }
+}
+setTimeout(() => { remindPayments(); notifyFinalRatings(); }, 30_000).unref();
+setInterval(() => { remindPayments(); notifyFinalRatings(); }, 15 * 60_000).unref();
 route('POST', '/api/admin/enrollments/:id/respond', ctx => {
   needAdmin(ctx); const e = getEnr(ctx.params.id); if (!e) throw new HttpError(404, 'غير موجود');
   respondEnrollment(e, ctx.body.action === 'accept' ? 'acc' : 'rej'); return { ok: true };
@@ -755,16 +857,63 @@ function openMarkup(it, priv) {
   const link = it.subject ? groupLink('s', it.subject) : it.q ? groupLink('q', it.q) : groupLink('h', '1');
   return link ? kb([[{ text: label, url: link }]]) : undefined;
 }
+const ackAt = new Map();
+const HELP_ADMIN = '👑 أوامر الإدارة:\n• رد (Reply) على رسالة أي طالب ← يوصله ردّك (نص أو صورة أو ملف)\n• /to آيدي_أو_@يوزر نص ← مراسلة طالب مباشرة\n• /all نص ← رسالة لجميع الطلاب\n\nأي رسالة يرسلها طالب للبوت تصلك هنا مع اسمه ويوزره.';
+async function relayToAdmins(m) {
+  const id = String(m.from.id), name = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') || 'طالب';
+  const prof = get('SELECT full_name,phone FROM users WHERE tg_id=?', id) || {}, isT = !!get(`SELECT 1 x FROM tutors WHERE tg_id=? AND status='active'`, id);
+  const head = `💬 ${isT ? 'رسالة من خصوصي' : 'رسالة من طالب'}\n👤 ${prof.full_name || name}${m.from.username ? ' (@' + m.from.username + ')' : ''}\n🆔 ${id}${prof.phone ? '\n📞 +' + prof.phone : ''}\n\n↩️ اعمل Reply على الرسالة ترد عليه`;
+  for (const a of ADMIN_IDS) {
+    const h = await tgCall('sendMessage', { chat_id: a, text: head });
+    if (h.ok) run('INSERT OR REPLACE INTO bot_inbox(chat_id,msg_id,user_tg) VALUES(?,?,?)', a, h.result.message_id, id);
+    const c = await tgCall('copyMessage', { chat_id: a, from_chat_id: m.chat.id, message_id: m.message_id, ...(h.ok ? { reply_to_message_id: h.result.message_id } : {}) });
+    if (c.ok) run('INSERT OR REPLACE INTO bot_inbox(chat_id,msg_id,user_tg) VALUES(?,?,?)', a, c.result.message_id, id);
+  }
+  if (Date.now() - (ackAt.get(id) || 0) > 600_000) {
+    ackAt.set(id, Date.now());
+    await tgCall('sendMessage', { chat_id: m.chat.id, text: '✅ وصلت رسالتك للإدارة، وبنرد عليك هنا بإذن الله.' });
+  }
+}
+async function sendToUser(toId, m, text) {
+  const isText = !!m.text;
+  let r;
+  if (isText) r = await tgCall('sendMessage', { chat_id: toId, text: '📩 رسالة من الإدارة:\n' + text });
+  else {
+    await tgCall('sendMessage', { chat_id: toId, text: '📩 رسالة من الإدارة:' });
+    r = await tgCall('copyMessage', { chat_id: toId, from_chat_id: m.chat.id, message_id: m.message_id });
+  }
+  if (!r.ok && r.error_code === 403) run('UPDATE users SET blocked=1 WHERE tg_id=?', toId);
+  return !!r.ok;
+}
+async function handleAdminMessage(m, text) {
+  const say = t => tgCall('sendMessage', { chat_id: m.chat.id, text: t, reply_to_message_id: m.message_id, allow_sending_without_reply: true });
+  const rep = m.reply_to_message && get('SELECT user_tg FROM bot_inbox WHERE chat_id=? AND msg_id=?', String(m.chat.id), m.reply_to_message.message_id);
+  if (rep && !text.startsWith('/')) return say((await sendToUser(rep.user_tg, m, text)) ? '✅ وصل الطالب' : '❌ تعذّر الإرسال (الطالب ما فتح البوت أو حظره)');
+  let mt;
+  if ((mt = text.match(/^\/all(?:@\w+)?\s+([\s\S]+)/))) {
+    const t = str(mt[1], 1000); if (t.length < 2) return say('اكتب نص الرسالة بعد /all');
+    try { return say(`📢 جاري الإرسال إلى ${startBroadcast(t)} مستخدم...`); } catch (e) { return say('❌ ' + e.message); }
+  }
+  if ((mt = text.match(/^\/to(?:@\w+)?\s+(\S+)\s+([\s\S]+)/))) {
+    let who2 = mt[1]; if (who2.startsWith('@')) who2 = get('SELECT tg_id FROM users WHERE LOWER(username)=LOWER(?)', who2.slice(1))?.tg_id;
+    if (!who2 || !/^\d+$/.test(who2)) return say('❌ ما لقيت هذا الطالب');
+    return say((await sendToUser(who2, { ...m, text: mt[2] }, mt[2])) ? '✅ وصل الطالب' : '❌ تعذّر الإرسال (الطالب ما فتح البوت أو حظره)');
+  }
+  return say(HELP_ADMIN);
+}
 async function handleMessage(m) {
-  if (!m || !m.text || !m.from || m.from.is_bot) return;
-  const text = m.text.trim(), priv = m.chat.type === 'private';
-  if (priv) run(`INSERT INTO users(tg_id,name,username) VALUES(?,?,?) ON CONFLICT(tg_id) DO UPDATE SET name=excluded.name,username=excluded.username,last_seen=datetime('now'),blocked=0`,
-    String(m.from.id), [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') || 'طالب', m.from.username || '');
+  if (!m || !m.from || m.from.is_bot || !m.chat || m.chat.type !== 'private') return;
+  const text = (m.text || '').trim(), fromId = String(m.from.id);
+  run(`INSERT INTO users(tg_id,name,username) VALUES(?,?,?) ON CONFLICT(tg_id) DO UPDATE SET name=excluded.name,username=excluded.username,last_seen=datetime('now'),blocked=0`,
+    fromId, [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') || 'طالب', m.from.username || '');
+  const adm = ADMIN_IDS.has(fromId);
   if (/^\/start\b/.test(text)) {
-    if (priv) await tgCall('sendMessage', { chat_id: m.chat.id, text: 'أهلاً بك في منصة الخصوصيين 🎓\nاضغط الزر لفتح المنصة.', ...(openMarkup({}, true) ? { reply_markup: openMarkup({}, true) } : {}) });
+    await tgCall('sendMessage', { chat_id: m.chat.id, text: 'أهلاً بك في منصة الخصوصيين 🎓\nاضغط الزر لفتح المنصة. وتقدر ترسل لي أي رسالة هنا وتوصل الإدارة.' + (adm ? '\n\n' + HELP_ADMIN : ''), ...(openMarkup({}, true) ? { reply_markup: openMarkup({}, true) } : {}) });
     return;
   }
+  if (adm) return handleAdminMessage(m, text);
   if (text.startsWith('/')) return;
+  await relayToAdmins(m);
 }
 async function handleCallback(cq) {
   const actor = String(cq.from.id), isAdm = ADMIN_IDS.has(actor), [kind, id, act] = String(cq.data || '').split(':');
