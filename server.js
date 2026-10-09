@@ -1,6 +1,5 @@
-
-/*
-* بدون أي مكتبات خارجية: Node.js 22.13+ فقط (http + sqlite المدمجة).
+/* منصة الخصوصيين — الخادم (Backend)
+ * بدون أي مكتبات خارجية: Node.js 22.13+ فقط (http + sqlite المدمجة).
  * - قاعدة بيانات SQLite داخل ملف واحد
  * - التحقق من هوية المستخدم عبر توقيع تليجرام (initData) فلا يمكن تزويرها
  * - الأدمن = آيديات تليجرام المحددة في الإعدادات
@@ -1043,3 +1042,4 @@ setInterval(backup, 6 * 3600_000).unref();
 
 loadBad();
 if (env.BOT_POLLING !== '0') startBot().catch(e => console.error('bot stopped', e.message));
+server.listen(PORT, () => console.log(`✅ المنصة تعمل على المنفذ ${PORT}`));
