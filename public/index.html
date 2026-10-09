@@ -11,7 +11,7 @@
 
 <script>tailwind.config={darkMode:'class'}</script>
 <style>
-body{font-famil	y:'Cairo',sans-serif;overflow:hidden;height:100dvh}
+body{font-family:'Cairo',sans-serif;overflow:hidden;height:100dvh}
 body::before{content:"";position:fixed;inset:0;z-index:-1;filter:blur(40px);background:radial-gradient(circle at 12% 8%,rgba(59,130,246,.35),transparent 42%),radial-gradient(circle at 88% 18%,rgba(99,102,241,.28),transparent 45%),radial-gradient(circle at 20% 85%,rgba(14,165,233,.25),transparent 45%)}
 .glass{backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%)}
 .dark .glass{background:rgba(15,23,42,.55);border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 32px rgba(0,0,0,.35)}
@@ -95,6 +95,37 @@ body::before{background:none!important;filter:none!important}
 #page-enr .tcard:nth-child(even){border-right:4px solid #10b981!important}
 #page-enr .tcard:nth-child(odd){border-right:4px solid #3b82f6!important}
 @media(max-width:365px){.tutorStats{grid-template-columns:1fr}.tcard{padding:14px!important}}
+
+/* Cairo typography across all UI controls and modal contents */
+html,body,button,input,select,textarea,option,.btn,*{font-family:'Cairo',sans-serif!important}
+#overlay{padding:12px!important;align-items:center}
+#card{width:100%;max-width:440px;max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.detail-card{padding:19px;border-radius:23px;display:flex;flex-direction:column;gap:17px;line-height:1.75;overflow-wrap:anywhere}
+.detail-header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.detail-person{display:flex;align-items:center;gap:11px;min-width:0;flex:1}
+.detail-person-text{min-width:0;flex:1}.detail-person-text h3{font-size:17px;font-weight:900;line-height:1.65;overflow-wrap:anywhere}.detail-person-text p{font-size:11px;color:#94a3b8}
+.detail-rating{flex-shrink:0;max-width:85px}
+.detail-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.detail-facts>div{padding:11px;border-radius:13px;background:rgba(59,130,246,.10);min-width:0}
+.detail-facts>div:nth-child(2){background:rgba(16,185,129,.10)}
+.detail-facts small{display:block;color:#94a3b8;font-size:11px;margin-bottom:4px}.detail-facts strong{font-size:12px;line-height:1.6;display:block}
+.detail-tags{display:flex;flex-wrap:wrap;gap:7px}
+.detail-bio{padding:12px 14px;border-radius:13px;background:rgba(148,163,184,.10)}.detail-bio h4{font-weight:800;font-size:12px;margin-bottom:5px}.detail-bio p{font-size:12px;color:#94a3b8;line-height:2}
+.detail-notice{padding:10px;border-radius:12px;background:rgba(239,68,68,.10);color:#ef4444;font-size:12px}
+.detail-section-title{display:flex;align-items:center;justify-content:space-between;gap:8px}.detail-section-title h4{font-size:15px;font-weight:900}.detail-section-title span{font-size:11px;color:#94a3b8}
+.detail-subjects{display:flex;flex-direction:column;gap:12px}
+.detail-subject{display:flex;flex-direction:column;gap:13px;padding:15px;border-radius:17px;background:rgba(59,130,246,.055);border:1px solid rgba(148,163,184,.20);min-width:0}
+.detail-subject:nth-child(even){background:rgba(16,185,129,.055)}
+.detail-subject-head{display:flex;align-items:flex-start;gap:9px}.detail-subject-head h4{flex:1;min-width:0;font-size:14px;font-weight:900;line-height:1.85;overflow-wrap:anywhere}
+.detail-book{display:grid;place-items:center;background:#3b82f6;color:#fff;width:30px;height:30px;border-radius:9px;flex-shrink:0}
+.detail-target{display:grid;grid-template-columns:auto 1fr;gap:2px 7px;align-items:start;font-size:11px}.detail-target svg{grid-row:1/3;margin-top:5px;color:#94a3b8}.detail-target span{color:#94a3b8}.detail-target strong{grid-column:2;line-height:1.9;font-size:12px}
+.detail-price{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px;border-radius:12px;background:rgba(16,185,129,.10)}.detail-price span{font-size:11px;color:#94a3b8}.detail-price strong{font-size:15px;font-weight:900;color:#10b981}
+.detail-trial{display:flex;justify-content:center;align-items:center;gap:7px;border:1px solid #f59e0b;border-radius:11px;padding:9px;font-size:12px;color:#f59e0b;font-weight:800}
+.detail-register .btn{font-size:12px;padding:11px}
+.detail-contact{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:9px}.detail-contact .btn{padding:12px;font-size:12px}
+.detail-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.detail-actions button{font-size:11px;font-weight:800;border-radius:11px;border:1px solid rgba(148,163,184,.25);background:rgba(148,163,184,.09);padding:10px 4px}
+.detail-close{font-size:12px;color:#94a3b8;padding:8px}
+@media(max-width:360px){.detail-card{padding:13px;gap:13px}.detail-facts{gap:6px}.detail-subject{padding:11px}}
 </style>
 </head>
 <body class="bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100">
@@ -429,29 +460,29 @@ async function reportReview(tid,rid){
 }
 function openCard(id){
   const t=db.tutors.find(x=>x.id===id);if(!t)return;
-  const price=v=>v?`<b class="text-lg">${esc(v)}</b> <span class="text-xs">${SAR}</span>`:'<span class="text-slate-400">—</span>';
-  const wa=t.whatsapp?`<a target="_blank" onclick="trk('wa','${id}')" href="https://wa.me/${t.whatsapp.replace(/\D/g,'')}" class="btn bg-emerald-500 !py-3.5 text-sm"><i class="fa-brands fa-whatsapp"></i> واتساب</a>`:'';
-  const tlh=t.telegram?(/^https?:/i.test(t.telegram)?t.telegram:'https://t.me/'+t.telegram.replace('@','')):'';
-  const tl=tlh?`<a target="_blank" onclick="trk('tg','${id}')" href="${esc(tlh)}" class="btn bg-sky-500 !py-3.5 text-sm"><i class="fa-brands fa-telegram"></i> تليجرام</a>`:'';
-  const info=[t.gender,t.age?t.age+' سنة':'',t.nationality].filter(Boolean).join(' • ');
   const fav=FAV.has(id);
-  $('card').innerHTML=`<div class="glass tcard rounded-3xl p-6 space-y-5 pop">
-    <div class="flex items-center gap-3">${avatar(t,60)}<div class="min-w-0 flex-1"><h3 class="text-xl font-black flex items-center gap-2 flex-wrap"><span>${esc(t.name)}</span>${vb(t,22)}</h3><p class="text-xs text-slate-400 mt-1">${esc(info)}</p></div>${ratingBadge(t,72)}</div>
-    <div class="tutorStats"><div class="tutorStat"><small>الجنسية</small><strong>${flagOf(t.nationality)} ${esc(t.nationality||'غير محددة')}</strong></div><div class="tutorStat"><small>متوسط السعر</small><strong>${esc(avgTutorPrice(t))} ${SAR}</strong></div></div>
-    <div class="flex flex-wrap gap-1.5">${availChip(t)}${badgeChips(t)}</div>
-    ${t.bio?`<p class="text-xs leading-relaxed text-slate-400">${esc(t.bio)}</p>`:''}
-    ${t.availability==='full'?`<p class="text-[11px] rounded-xl bg-red-500/10 text-red-500 p-2 text-center font-bold">هذا الخصوصي ممتلئ حالياً، تقدر تتواصل معه وتسأل عن توفر مقعد.</p>`:''}
-    <div class="space-y-3">${t.subjects.map((s,idx)=>`<div class="subjectDetail space-y-3">
-      <div class="flex items-center justify-between gap-2"><h4 class="font-black text-base">${esc(s.name)}</h4>${s.trial?`<a target="_blank" onclick="trk('trial','${id}')" href="${esc(s.trial)}" class="text-[11px] px-3 py-1.5 rounded-lg bg-amber-500 text-white font-bold shrink-0"><i class="fa-solid fa-circle-play"></i> شرح تجريبي</a>`:''}</div>
-      ${s.targets?`<div class="tutorMeta"><span><i class="fa-solid fa-users"></i> الفئة المستهدفة: ${esc(s.targets)}</span></div>`:''}
-      <div class="rounded-xl bg-emerald-500/10 py-3 text-center"><div class="text-[11px] text-slate-400 mb-0.5">سعر الشرح للترم كامل</div>${price(s.price||s.onsite)}</div>
-      ${regBlock(t,idx)}</div>`).join('')}</div>
-    <div class="grid grid-cols-2 gap-3">${wa}${tl}</div>
-    <div class="grid grid-cols-3 gap-2 text-[11px] font-bold">
-      <button onclick="toggleFav('${id}');openCard('${id}')" class="py-2.5 rounded-xl border border-slate-500/30 bg-slate-500/10"><i class="fa-${fav?'solid':'regular'} fa-heart" style="color:${fav?'#ef4444':'#94a3b8'}"></i> المفضلة</button>
-      <button onclick="shareTutor('${id}')" class="py-2.5 rounded-xl border border-slate-500/30 bg-slate-500/10"><i class="fa-solid fa-share-nodes" style="color:#3b82f6"></i> مشاركة</button>
-      <button onclick="reportTutor('${id}')" class="py-2.5 rounded-xl border border-slate-500/30 bg-slate-500/10"><i class="fa-regular fa-flag" style="color:#94a3b8"></i> إبلاغ</button></div>
-    <button onclick="closeCard()" class="w-full text-sm text-slate-400 py-1.5">إغلاق</button></div>`;
+  const wa=t.whatsapp?`<a target="_blank" onclick="trk('wa','${id}')" href="https://wa.me/${t.whatsapp.replace(/\D/g,'')}" class="btn bg-emerald-500"><i class="fa-brands fa-whatsapp"></i> واتساب</a>`:'';
+  const tlh=t.telegram?(/^https?:/i.test(t.telegram)?t.telegram:'https://t.me/'+t.telegram.replace('@','')):'';
+  const tl=tlh?`<a target="_blank" onclick="trk('tg','${id}')" href="${esc(tlh)}" class="btn bg-sky-500"><i class="fa-brands fa-telegram"></i> تليجرام</a>`:'';
+  const subjects=t.subjects.map((s,idx)=>`<section class="detail-subject">
+    <div class="detail-subject-head"><span class="detail-book"><i class="fa-solid fa-book-open"></i></span><h4>${esc(s.name)}</h4></div>
+    ${s.targets?`<div class="detail-target"><i class="fa-solid fa-users"></i><span>الفئة المستهدفة</span><strong>${esc(s.targets)}</strong></div>`:''}
+    <div class="detail-price"><span>سعر المادة للترم كامل</span><strong>${s.price||s.onsite?esc(s.price||s.onsite)+' '+SAR:'يحدد بالتواصل'}</strong></div>
+    ${s.trial?`<a class="detail-trial" target="_blank" onclick="trk('trial','${id}')" href="${esc(s.trial)}"><i class="fa-solid fa-circle-play"></i> مشاهدة شرح تجريبي</a>`:''}
+    <div class="detail-register">${regBlock(t,idx)}</div>
+  </section>`).join('');
+  $('card').innerHTML=`<div class="glass detail-card pop">
+    <header class="detail-header"><div class="detail-person">${avatar(t,58)}<div class="detail-person-text"><h3>${esc(t.name)} ${vb(t,20)}</h3><p>${[t.gender,t.age?t.age+' سنة':''].filter(Boolean).map(esc).join(' • ')}</p></div></div><div class="detail-rating">${ratingBadge(t,68)}</div></header>
+    <div class="detail-facts"><div><small>الجنسية</small><strong>${flagOf(t.nationality)} ${esc(t.nationality||'غير محددة')}</strong></div><div><small>متوسط السعر</small><strong>${esc(avgTutorPrice(t))} ${SAR}</strong></div></div>
+    <div class="detail-tags">${availChip(t)}${badgeChips(t)}</div>
+    ${t.bio?`<div class="detail-bio"><h4>نبذة عن الخصوصي</h4><p>${esc(t.bio)}</p></div>`:''}
+    ${t.availability==='full'?'<div class="detail-notice">الخصوصي ممتلئ حاليًا؛ تواصل معه للاستفسار عن توفر مقعد.</div>':''}
+    <div class="detail-section-title"><h4>المواد المتاحة</h4><span>${t.subjects.length} مادة</span></div>
+    <div class="detail-subjects">${subjects}</div>
+    ${wa||tl?`<div class="detail-contact">${wa}${tl}</div>`:''}
+    <div class="detail-actions"><button onclick="toggleFav('${id}');openCard('${id}')"><i class="fa-${fav?'solid':'regular'} fa-heart"></i> المفضلة</button><button onclick="shareTutor('${id}')"><i class="fa-solid fa-share-nodes"></i> مشاركة</button><button onclick="reportTutor('${id}')"><i class="fa-regular fa-flag"></i> إبلاغ</button></div>
+    <button class="detail-close" onclick="closeCard()">إغلاق البطاقة</button>
+  </div>`;
   $('overlay').classList.remove('hidden');$('overlay').classList.add('flex');
 }
 function closeCard(){STU_OPEN=null;$('overlay').classList.add('hidden');$('overlay').classList.remove('flex')}
