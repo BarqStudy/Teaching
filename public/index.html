@@ -8,10 +8,10 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
 <script>tailwind.config={darkMode:'class'}</script>
 <style>
-body{font-family:'Cairo',sans-serif;overflow:hidden;height:100dvh}
+body{font-famil	y:'Cairo',sans-serif;overflow:hidden;height:100dvh}
 body::before{content:"";position:fixed;inset:0;z-index:-1;filter:blur(40px);background:radial-gradient(circle at 12% 8%,rgba(59,130,246,.35),transparent 42%),radial-gradient(circle at 88% 18%,rgba(99,102,241,.28),transparent 45%),radial-gradient(circle at 20% 85%,rgba(14,165,233,.25),transparent 45%)}
 .glass{backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%)}
 .dark .glass{background:rgba(15,23,42,.55);border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 32px rgba(0,0,0,.35)}
@@ -70,49 +70,74 @@ body::before{background:radial-gradient(circle at 5% 5%,rgba(var(--accent-rgb),.
 .tutorMeta{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}.tutorMeta span{padding:5px 9px;border-radius:10px;background:rgba(var(--accent-rgb),.10);font-size:11px;font-weight:700}
 .subjectDetail{border:1px solid rgba(var(--accent-rgb),.20);border-radius:20px;padding:16px;background:rgba(var(--accent-rgb),.045)}
 @media(min-width:640px){.scroll{max-width:34rem}.tcard:hover{transform:translateY(-3px)}}
+
+/* تحديث تصميم برق: ألوان مسطحة وبطاقات مرتبة */
+body::before{background:none!important;filter:none!important}
+.chip,.ibtn,.nv.on .chip,.guideEmoji{background:var(--c,var(--accent))!important;color:#fff!important}
+.chip svg,.ibtn svg,.designIcon svg,.nv .chip svg,.guideEmoji svg{color:#fff!important;fill:currentColor}
+.nv .chip{background:#64748b!important}.nv.on .chip{background:var(--accent)!important}
+.designIcon{box-shadow:none!important}
+.tcard{padding:19px!important;border-radius:23px!important;box-shadow:0 5px 22px rgba(15,23,42,.07)!important}
+.tutorTop{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center}
+.tutorIdentity{min-width:0}.tutorIdentity h4{line-height:1.7;overflow-wrap:anywhere}
+.tutorStats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}
+.tutorStat{padding:12px;border-radius:15px;background:rgba(16,185,129,.09);min-width:0}
+.tutorStat:first-child{background:rgba(59,130,246,.09)}
+.tutorStat small{display:block;font-size:10px;color:#94a3b8;margin-bottom:3px}.tutorStat strong{font-size:12px;display:block;overflow-wrap:anywhere}
+.tutorSubjects{border-top:1px solid rgba(148,163,184,.18);padding-top:12px;margin-top:13px}
+.tutorSubjects .tag{display:inline-block;margin:3px 0 0 4px}
+.tutorFoot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;padding:12px 14px;border-radius:14px;background:rgba(245,158,11,.10)}
+.subjectDetail{background:rgba(59,130,246,.055);border-color:rgba(59,130,246,.20)}
+.subjectDetail:nth-child(even){background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.18)}
+#page-home #applyCard{border-right:4px solid #8b5cf6}#page-home #rateCard{border-right:4px solid #f59e0b}
+#page-home #enrCard{border-right:4px solid #10b981}#page-home #stuCard{border-right:4px solid #0ea5e9}
+#page-home #finalCard{border-right:4px solid #f97316}
+#page-enr .tcard:nth-child(even){border-right:4px solid #10b981!important}
+#page-enr .tcard:nth-child(odd){border-right:4px solid #3b82f6!important}
+@media(max-width:365px){.tutorStats{grid-template-columns:1fr}.tcard{padding:14px!important}}
 </style>
 </head>
 <body class="bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100">
 
-<button onclick="toggleTheme()" class="absolute top-4 left-4 z-50 ibtn" aria-label="تغيير الوضع"><i class="bi bi-circle-half"></i></button>
-<div id="designTools"><button class="designIcon" onclick="showPalette(false)" title="ألوان المنصة"><i class="bi bi-palette2"></i></button><button class="designIcon" onclick="startGuide('student',true)" title="طريقة الاستخدام"><i class="bi bi-question-lg"></i></button></div>
+<button onclick="toggleTheme()" class="absolute top-4 left-4 z-50 ibtn" aria-label="تغيير الوضع"><i class="fa-solid fa-circle-half-stroke"></i></button>
+<div id="designTools"><button class="designIcon" onclick="showPalette(false)" title="ألوان المنصة"><i class="fa-solid fa-palette"></i></button><button class="designIcon" onclick="startGuide('student',true)" title="طريقة الاستخدام"><i class="fa-solid fa-question"></i></button></div>
 <div id="guideLayer" class="hidden" role="dialog" aria-modal="true"><div class="guidePanel" id="guidePanel"></div></div>
 
 <!-- الرئيسية -->
 <div id="page-home" class="page"><div class="scroll">
   <div class="text-center space-y-3 pt-2">
-    <div class="inline-block p-2 rounded-3xl glass"><div class="w-16 h-16 chip text-3xl"><i class="bi bi-mortarboard"></i></div></div>
+    <div class="inline-block p-2 rounded-3xl glass"><div class="w-16 h-16 chip text-3xl"><i class="fa-solid fa-graduation-cap"></i></div></div>
     <h1 id="welcome" class="text-xl font-bold">أهلاً بك</h1>
     <div class="inline-block px-4 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-xs font-bold" dir="ltr" id="handle"></div>
   </div>
 
   <div class="glass rounded-3xl p-5 flex items-center justify-between">
     <div><p class="text-xs text-slate-400 mb-1">عدد المواد المشروحة</p><h2 id="subjCount" class="text-3xl font-black text-blue-500">0</h2><p class="text-[10px] text-slate-400 mt-1">مواد يشرحها خصوصيونا حالياً</p></div>
-    <div class="w-14 h-14 chip text-2xl"><i class="bi bi-book-open"></i></div>
+    <div class="w-14 h-14 chip text-2xl"><i class="fa-solid fa-circle-info"></i></div>
   </div>
 
   <div class="relative" id="homeSearch">
     <input id="search" oninput="doSearch(this.value)" placeholder="ابحث عن خصوصي أو مادة..." class="w-full p-4 pr-12 rounded-2xl bg-blue-600/15 border-2 border-blue-500/60 focus:outline-none text-sm font-bold">
-    <span class="absolute right-4 top-4 ibtn !w-8 !h-8 !rounded-xl text-sm"><i class="bi bi-magnifying-glass"></i></span>
+    <span class="absolute right-4 top-4 ibtn !w-8 !h-8 !rounded-xl text-sm"><i class="fa-solid fa-circle-info"></i></span>
   </div>
   <div id="results" class="space-y-2 max-h-72 overflow-y-auto"></div>
 
   <button onclick="openList()" id="tutBtn" class="glass rounded-3xl p-6 text-right flex items-center justify-between hover:border-blue-500/50 transition">
-    <div><h3 class="font-black text-lg"><i class="bi bi-person-video3"></i> الخصوصيين</h3><p class="text-xs text-slate-400 mt-1">تصفّح جميع الخصوصيين المعتمدين</p></div>
+    <div><h3 class="font-black text-lg"><i class="fa-solid fa-chalkboard-user"></i> الخصوصيين</h3><p class="text-xs text-slate-400 mt-1">تصفّح جميع الخصوصيين المعتمدين</p></div>
     <span id="tutorCount" class="w-14 h-14 chip text-white font-black text-xl">0</span>
   </button>
 
-  <button onclick="go('enr')" id="enrCard" style="display:none" class="glass p-4 rounded-2xl items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg" style="--c:#f59e0b"><i class="bi bi-clipboard-check"></i></span><div class="flex-1"><h3 class="font-bold text-sm">تسجيلاتي</h3><p class="text-[11px] text-slate-400">تابع حالة تسجيلك عند الخصوصيين</p></div><span id="enrCount" class="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-black empty:hidden"></span></button>
-  <button onclick="go('enr')" id="finalCard" style="display:none" class="glass p-4 rounded-2xl items-center gap-3 text-right border border-amber-500/40"><span class="w-11 h-11 chip text-lg" style="--c:#f59e0b"><i class="bi bi-calendar-check"></i></span><div class="flex-1"><h3 class="font-bold text-sm">انتهى الترم 📅</h3><p class="text-[11px] text-slate-400">قيّم خصوصيك تقييم نهاية الترم</p></div></button>
-  <button onclick="go('students')" id="stuCard" style="display:none" class="glass p-4 rounded-2xl items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg" style="--c:#10b981"><i class="bi bi-people"></i></span><div class="flex-1"><h3 class="font-bold text-sm">طلابي</h3><p class="text-[11px] text-slate-400">الطلاب المسجلون عندك وحالة الدفع</p></div><span id="stuCount" class="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-black empty:hidden"></span></button>
-  <button onclick="go('apply')" id="applyCard" class="glass p-4 rounded-2xl flex items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg"><i class="bi bi-pencil-square"></i></span><div><h3 class="font-bold text-sm">طلب التسجيل كخصوصي</h3><p class="text-[11px] text-slate-400">سجّل بياناتك وموادك وأسعارك</p></div></button>
-  <button onclick="go('rate')" id="rateCard" class="glass p-4 rounded-2xl flex items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg" style="--c:#10b981"><i class="bi bi-star-fill"></i></span><div><h3 class="font-bold text-sm">التقييمات</h3><p class="text-[11px] text-slate-400">شاهد آراء الطلاب وقيّم خصوصيك</p></div></button>
-  <button onclick="go('dev')" class="glass p-4 rounded-2xl flex items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg"><i class="bi bi-code"></i></span><div><h3 class="font-bold text-sm">المطور</h3><p class="text-[11px] text-slate-400">معلومات وتفاصيل المطور</p></div></button>
+  <button onclick="go('enr')" id="enrCard" style="display:none" class="glass p-4 rounded-2xl items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg" style="--c:#f59e0b"><i class="fa-solid fa-clipboard-check"></i></span><div class="flex-1"><h3 class="font-bold text-sm">تسجيلاتي</h3><p class="text-[11px] text-slate-400">تابع حالة تسجيلك عند الخصوصيين</p></div><span id="enrCount" class="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-black empty:hidden"></span></button>
+  <button onclick="go('enr')" id="finalCard" style="display:none" class="glass p-4 rounded-2xl items-center gap-3 text-right border border-amber-500/40"><span class="w-11 h-11 chip text-lg" style="--c:#f59e0b"><i class="fa-solid fa-calendar-check"></i></span><div class="flex-1"><h3 class="font-bold text-sm">انتهى الترم 📅</h3><p class="text-[11px] text-slate-400">قيّم خصوصيك تقييم نهاية الترم</p></div></button>
+  <button onclick="go('students')" id="stuCard" style="display:none" class="glass p-4 rounded-2xl items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg" style="--c:#10b981"><i class="fa-solid fa-users"></i></span><div class="flex-1"><h3 class="font-bold text-sm">طلابي</h3><p class="text-[11px] text-slate-400">الطلاب المسجلون عندك وحالة الدفع</p></div><span id="stuCount" class="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-black empty:hidden"></span></button>
+  <button onclick="go('apply')" id="applyCard" class="glass p-4 rounded-2xl flex items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg"><i class="fa-solid fa-pen-to-square"></i></span><div><h3 class="font-bold text-sm">طلب التسجيل كخصوصي</h3><p class="text-[11px] text-slate-400">سجّل بياناتك وموادك وأسعارك</p></div></button>
+  <button onclick="go('rate')" id="rateCard" class="glass p-4 rounded-2xl flex items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg" style="--c:#10b981"><i class="fa-solid fa-star"></i></span><div><h3 class="font-bold text-sm">التقييمات</h3><p class="text-[11px] text-slate-400">شاهد آراء الطلاب وقيّم خصوصيك</p></div></button>
+  <button onclick="go('dev')" class="glass p-4 rounded-2xl flex items-center gap-3 text-right"><span class="w-11 h-11 chip text-lg"><i class="fa-solid fa-circle-info"></i></span><div><h3 class="font-bold text-sm">المطور</h3><p class="text-[11px] text-slate-400">معلومات وتفاصيل المطور</p></div></button>
 </div></div>
 
 <!-- قائمة الخصوصيين -->
 <div id="page-list" class="page hidden"><div class="scroll">
-  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="bi bi-arrow-right"></i></button><h2 class="text-lg font-bold">الخصوصيين</h2></div>
+  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="fa-solid fa-arrow-right"></i></button><h2 class="text-lg font-bold">الخصوصيين</h2></div>
   <div id="listFilters" class="space-y-2"></div>
   <p id="listCount" class="text-[11px] text-slate-400"></p>
   <div id="listBox" class="space-y-2"></div>
@@ -121,45 +146,51 @@ body::before{background:radial-gradient(circle at 5% 5%,rgba(var(--accent-rgb),.
 
 <!-- التسجيل كخصوصي -->
 <div id="page-apply" class="page hidden"><div class="scroll">
-  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="bi bi-arrow-right"></i></button><div><h2 class="text-lg font-bold">التسجيل كخصوصي</h2><p class="text-[11px] text-slate-400">تُرسل بياناتك للإدارة للمراجعة</p></div></div>
+  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="fa-solid fa-arrow-right"></i></button><div><h2 class="text-lg font-bold">التسجيل كخصوصي</h2><p class="text-[11px] text-slate-400">تُرسل بياناتك للإدارة للمراجعة</p></div></div>
   <div class="glass p-4 rounded-2xl space-y-3" id="applyForm"></div>
 </div></div>
 
 <!-- صفحة مادة -->
 <div id="page-subject" class="page hidden"><div class="scroll">
-  <div class="flex items-center gap-2"><button onclick="go('list')" class="ibtn sm"><i class="bi bi-arrow-right"></i></button><h2 class="text-lg font-bold" id="subjTitle"></h2></div>
+  <div class="flex items-center gap-2"><button onclick="go('list')" class="ibtn sm"><i class="fa-solid fa-arrow-right"></i></button><h2 class="text-lg font-bold" id="subjTitle"></h2></div>
   <div id="subjBody" class="space-y-3"></div>
 </div></div>
 
 <!-- تسجيلاتي -->
 <div id="page-enr" class="page hidden"><div class="scroll">
-  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="bi bi-arrow-right"></i></button><div><h2 class="text-lg font-bold">تسجيلاتي</h2><p class="text-[11px] text-slate-400">حالة تسجيلك عند كل خصوصي</p></div></div>
+  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="fa-solid fa-arrow-right"></i></button><div><h2 class="text-lg font-bold">تسجيلاتي</h2><p class="text-[11px] text-slate-400">حالة تسجيلك عند كل خصوصي</p></div></div>
   <div id="enrBox" class="space-y-2"></div>
+</div></div>
+
+<!-- موادي للطالب -->
+<div id="page-subjectsMine" class="page hidden"><div class="scroll">
+  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="fa-solid fa-arrow-right"></i></button><div><h2 class="text-lg font-black">موادي</h2><p class="text-xs text-slate-400">المواد التي سجّلت فيها لدى الخصوصيين</p></div></div>
+  <div id="mySubjectsBox" class="space-y-3"></div>
 </div></div>
 
 <!-- طلابي (للخصوصي) -->
 <div id="page-students" class="page hidden"><div class="scroll">
-  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="bi bi-arrow-right"></i></button><div><h2 class="text-lg font-bold">طلابي</h2><p class="text-[11px] text-slate-400">الطلاب المسجلون عندك والدفع</p></div></div>
+  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="fa-solid fa-arrow-right"></i></button><div><h2 class="text-lg font-bold">طلابي</h2><p class="text-[11px] text-slate-400">الطلاب المسجلون عندك والدفع</p></div></div>
   <div id="stuBox" class="space-y-2"></div>
 </div></div>
 
 <!-- التقييم -->
 <div id="page-rate" class="page hidden"><div class="scroll">
-  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="bi bi-arrow-right"></i></button><div><h2 class="text-lg font-bold">التقييمات</h2><p class="text-[11px] text-slate-400">اضغط على أي خصوصي لمشاهدة تقييمات الطلاب أو إضافة تقييمك</p></div></div>
+  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="fa-solid fa-arrow-right"></i></button><div><h2 class="text-lg font-bold">التقييمات</h2><p class="text-[11px] text-slate-400">اضغط على أي خصوصي لمشاهدة تقييمات الطلاب أو إضافة تقييمك</p></div></div>
   <div id="rateBox" class="space-y-2"></div>
 </div></div>
 
 <!-- حساب الخصوصي -->
 <div id="page-me" class="page hidden"><div class="scroll">
-  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="bi bi-arrow-right"></i></button><h2 class="text-lg font-bold">حسابي كخصوصي</h2></div>
+  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="fa-solid fa-arrow-right"></i></button><h2 class="text-lg font-bold">حسابي كخصوصي</h2></div>
   <div id="meBox" class="glass p-4 rounded-2xl space-y-3"></div>
 </div></div>
 
 <!-- المطور -->
 <div id="page-dev" class="page hidden"><div class="scroll">
-  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="bi bi-arrow-right"></i></button><h2 class="text-lg font-bold">عن المنصة والمطور</h2></div>
+  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="fa-solid fa-arrow-right"></i></button><h2 class="text-lg font-bold">عن المنصة والمطور</h2></div>
   <div class="glass p-6 rounded-3xl text-sm leading-relaxed text-center space-y-4">
-    <div class="w-20 h-20 chip text-4xl mx-auto"><i class="bi bi-code"></i></div>
+    <div class="w-20 h-20 chip text-4xl mx-auto"><i class="fa-solid fa-circle-info"></i></div>
     <p>منصة <b>الخصوصيين</b> تربط الطلاب بمدرسين خصوصيين معتمدين لشرح المواد حضورياً أو عن بعد.</p>
     <a id="devLink" target="_blank" class="inline-block px-4 py-2 rounded-xl bg-blue-500 text-white font-bold text-xs">تواصل مع المطور</a>
   </div>
@@ -167,7 +198,7 @@ body::before{background:radial-gradient(circle at 5% 5%,rgba(var(--accent-rgb),.
 
 <!-- الإدارة -->
 <div id="page-admin" class="page hidden"><div class="scroll">
-  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="bi bi-arrow-right"></i></button><h2 class="text-lg font-bold text-blue-500"><i class="bi bi-gear"></i> لوحة تحكم الإدارة</h2></div>
+  <div class="flex items-center gap-2"><button onclick="go('home')" class="ibtn sm"><i class="fa-solid fa-arrow-right"></i></button><h2 class="text-lg font-bold text-blue-500"><i class="fa-solid fa-gear"></i> لوحة تحكم الإدارة</h2></div>
   <div class="grid grid-cols-3 gap-2 text-center">
     <div class="glass p-3 rounded-2xl"><span class="text-[10px] text-slate-400">الخصوصيون</span><h3 id="stT" class="font-bold text-blue-500">0</h3></div>
     <div class="glass p-3 rounded-2xl"><span class="text-[10px] text-slate-400">طلبات جديدة</span><h3 id="stR" class="font-bold text-amber-500">0</h3></div>
@@ -186,12 +217,13 @@ body::before{background:radial-gradient(circle at 5% 5%,rgba(var(--accent-rgb),.
 <div id="overlay" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] hidden items-center justify-center p-4" onclick="if(event.target===this)closeCard()"><div id="card" class="w-full max-w-sm max-h-[92vh] overflow-y-auto"></div></div>
 
 <nav class="fixed bottom-4 left-4 right-4 max-w-md mx-auto glass p-2.5 flex justify-around z-40 rounded-3xl">
-  <button onclick="go('home')" id="nav-home" class="nv on flex flex-col items-center gap-1 p-2 text-blue-500"><span class="chip w-9 h-9 text-base"><i class="bi bi-house"></i></span><span class="text-[10px] font-bold">الرئيسية</span></button>
-  <button onclick="go('rate')" id="nav-rate" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="bi bi-star-fill"></i></span><span class="text-[10px] font-bold">التقييمات</span></button>
-  <button onclick="go('students')" id="nav-students" style="display:none" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="bi bi-people"></i></span><span class="text-[10px] font-bold">طلابي</span></button>
+  <button onclick="go('home')" id="nav-home" class="nv on flex flex-col items-center gap-1 p-2 text-blue-500"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-house"></i></span><span class="text-[10px] font-bold">الرئيسية</span></button>
+  <button onclick="go('subjectsMine')" id="nav-subjectsMine" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-book-open"></i></span><span class="text-[10px] font-bold">موادي</span></button>
+  <button onclick="go('rate')" id="nav-rate" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-star"></i></span><span class="text-[10px] font-bold">التقييمات</span></button>
+  <button onclick="go('students')" id="nav-students" style="display:none" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-users"></i></span><span class="text-[10px] font-bold">طلابي</span></button>
 
-  <button onclick="go('me')" id="nav-me" style="display:none" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="bi bi-user-graduate"></i></span><span class="text-[10px] font-bold">حسابي</span></button>
-  <button onclick="go('admin')" id="nav-admin" style="display:none" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="bi bi-gear"></i></span><span class="text-[10px] font-bold">الإدارة</span></button>
+  <button onclick="go('me')" id="nav-me" style="display:none" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-user-graduate"></i></span><span class="text-[10px] font-bold">حسابي</span></button>
+  <button onclick="go('admin')" id="nav-admin" style="display:none" class="nv flex flex-col items-center gap-1 p-2 text-slate-400"><span class="chip w-9 h-9 text-base"><i class="fa-solid fa-gear"></i></span><span class="text-[10px] font-bold">الإدارة</span></button>
 </nav>
 
 <script>
@@ -269,7 +301,7 @@ const rc=n=>n>=85?'#16a34a':n>=70?'#84cc16':n>=55?'#eab308':'#ef4444';
 const rcol=n=>n>=85?'text-green-600':n>=70?'text-lime-500':n>=55?'text-yellow-500':'text-red-500';
 const isNew=t=>!(db.ratings[t.id]||[]).length&&!(+t.rating);
 // شارة التوثيق الذهبية
-const vb=(t,sz=18)=>t&&t.verified?`<span title="خصوصي موثق" class="relative inline-flex items-center justify-center shrink-0" style="width:${sz}px;height:${sz}px;line-height:1"><i class="bi bi-patch-check-fill" style="color:#f5b301;font-size:${sz}px;filter:drop-shadow(0 0 3px rgba(245,179,1,.55))"></i><i class="bi bi-check absolute" style="color:#fff;font-size:${Math.round(sz*.5)}px"></i></span>`:'';
+const vb=(t,sz=18)=>t&&t.verified?`<span title="خصوصي موثق" class="relative inline-flex items-center justify-center shrink-0" style="width:${sz}px;height:${sz}px;line-height:1"><i class="fa-solid fa-certificate" style="color:#f5b301;font-size:${sz}px;filter:drop-shadow(0 0 3px rgba(245,179,1,.55))"></i><i class="fa-solid fa-check absolute" style="color:#fff;font-size:${Math.round(sz*.5)}px"></i></span>`:'';
 function ratingBadge(t,size=60){
   const sw=Math.max(5,Math.round(size*.1)),R=(size-sw)/2,C=+(2*Math.PI*R).toFixed(2),c=size/2;
   const nw=isNew(t),r=nw?0:avg(t),col=nw?'#64748b':rc(r);
@@ -283,19 +315,19 @@ function priceText(t){
 const avatar=(t,sz=48)=>t.photo?`<img src="${esc(t.photo)}" alt="" class="rounded-full object-cover shrink-0" style="width:${sz}px;height:${sz}px">`:`<div class="rounded-full chip shrink-0 font-black" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.4)}px;color:#fff">${esc((String(t.name||'?').trim()[0])||'?')}</div>`;
 const BADGES={top:['⭐','الأعلى تقييماً','#f59e0b'],engaged:['💬','متفاعل مع الطلاب','#0ea5e9'],hot:['🔥','الأكثر طلباً','#ef4444']};
 const badgeChips=t=>(t.badges||[]).filter(b=>BADGES[b]).map(b=>`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold" style="background:${BADGES[b][2]}22;color:${BADGES[b][2]}">${BADGES[b][0]}<span> ${BADGES[b][1]}</span></span>`).join('');
-const availChip=t=>t.availability==='full'?`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-500">ممتلئ هذا الترم</span>`:`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-500"><i class="bi bi-circle-fill" style="font-size:6px;color:#10b981"></i> متاح</span>`;
+const availChip=t=>t.availability==='full'?`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-500">ممتلئ هذا الترم</span>`:`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-500"><i class="fa-solid fa-circle" style="font-size:6px;color:#10b981"></i> متاح</span>`;
 
 /* ===== التنقل ===== */
 function go(p){
   if(p==='admin'&&!isAdmin)return;
   if((p==='me'||p==='students')&&!me.tutorId)return;
-  if(me.tutorId&&['list','rate','apply','enr','subject'].includes(p))p='home';
+  if(me.tutorId&&['list','rate','apply','enr','subject','subjectsMine'].includes(p))p='home';
   curPage=p;
-  ['home','list','apply','rate','dev','admin','me','subject','enr','students'].forEach(x=>$('page-'+x).classList.add('hidden'));
+  ['home','list','apply','rate','dev','admin','me','subject','enr','students','subjectsMine'].forEach(x=>$('page-'+x).classList.add('hidden'));
   const el=$('page-'+p);el.classList.remove('hidden');el.querySelector('.scroll').scrollTo(0,0);
-  const cur=p==='admin'?'admin':p==='rate'?'rate':p==='me'?'me':p==='students'?'students':'home';
-  ['home','rate','students','me','admin'].forEach(k=>$('nav-'+k).className='nv flex flex-col items-center gap-1 p-2 '+(k===cur?'on text-blue-500':'text-slate-400'));
-  if(p==='apply'&&!me.tutorId)maybeTutorGuide();if(p==='home')renderHome();if(p==='list')renderList();if(p==='rate')renderRate();if(p==='apply')renderApply();if(p==='admin')renderAdmin();if(p==='me')renderMe();if(p==='subject')renderSubject();if(p==='enr')renderEnr();if(p==='students')renderStudents();
+  const cur=p==='admin'?'admin':p==='rate'?'rate':p==='me'?'me':p==='students'?'students':p==='subjectsMine'?'subjectsMine':'home';
+  ['home','rate','students','me','admin','subjectsMine'].forEach(k=>$('nav-'+k).className='nv flex flex-col items-center gap-1 p-2 '+(k===cur?'on text-blue-500':'text-slate-400'));
+  if(p==='apply'&&!me.tutorId)maybeTutorGuide();if(p==='home')renderHome();if(p==='list')renderList();if(p==='rate')renderRate();if(p==='apply')renderApply();if(p==='admin')renderAdmin();if(p==='me')renderMe();if(p==='subject')renderSubject();if(p==='enr')renderEnr();if(p==='students')renderStudents();if(p==='subjectsMine')renderMySubjects();
 }
 function toggleTheme(){const h=document.documentElement;const d=h.classList.contains('dark');h.classList.toggle('dark',!d);h.classList.toggle('light',d)}
 
@@ -307,21 +339,28 @@ function renderHome(){
   ['homeSearch','tutBtn','applyCard','rateCard'].forEach(k=>$(k).style.display=isT?'none':'');$('results').innerHTML=isT?'':$('results').innerHTML;
   $('enrCard').style.display=(!isT&&ENR.length)?'flex':'none';$('finalCard').style.display=(!isT&&FINAL.size)?'flex':'none';$('enrCount').textContent=ENR.filter(e=>e.status==='pending').length||'';
   $('stuCard').style.display=me.tutorId?'flex':'none';$('stuCount').textContent=TENR.filter(e=>e.status==='pending').length||'';
-  $('nav-admin').style.display=isAdmin?'flex':'none';$('nav-me').style.display=me.tutorId?'flex':'none';$('nav-students').style.display=me.tutorId?'flex':'none';$('nav-rate').style.display=me.tutorId?'none':'flex';
+  $('nav-admin').style.display=isAdmin?'flex':'none';$('nav-me').style.display=me.tutorId?'flex':'none';$('nav-students').style.display=me.tutorId?'flex':'none';$('nav-rate').style.display=me.tutorId?'none':'flex';$('nav-subjectsMine').style.display=me.tutorId?'none':'flex';
 }
 function tutorRow(t,fn){
   const info=[t.gender,t.age?t.age+' سنة':''].filter(Boolean).join(' • ');
   const fav=FAV.has(t.id);
-  return `<div onclick="${fn}('${t.id}')" role="button" class="glass tcard w-full p-4 rounded-3xl text-right block space-y-3 cursor-pointer ${ANIM?'rise':''}">
-    <div class="flex items-center gap-3">
-      ${ratingBadge(t,56)}${avatar(t,46)}
-      <div class="min-w-0 flex-1"><h4 class="font-black text-base flex items-center gap-1.5 flex-wrap"><span>${esc(t.name)}</span><span>${flagOf(t.nationality)}</span>${vb(t,18)}</h4><p class="text-[11px] text-slate-400 mt-0.5">${esc(info)}</p><div class="tutorMeta"><span>${flagOf(t.nationality)} ${esc(t.nationality||'غير محدد')}</span><span><i class="bi bi-cash-coin"></i> متوسط السعر: ${esc(avgTutorPrice(t))} ${SAR}</span></div></div>
-      <button onclick="toggleFav('${t.id}',event)" class="shrink-0 w-9 h-9 rounded-full bg-slate-500/15 flex items-center justify-center"><i class="bi-${fav?'solid':'regular'} fa-heart" style="color:${fav?'#ef4444':'#94a3b8'}"></i></button>
+  return `<div onclick="${fn}('${t.id}')" role="button" class="glass tcard w-full text-right cursor-pointer ${ANIM?'rise':''}">
+    <div class="tutorTop">
+      ${avatar(t,54)}
+      <div class="tutorIdentity"><h4 class="font-black text-base flex items-center gap-2 flex-wrap">${esc(t.name)} ${vb(t,18)}</h4>
+      <p class="text-[11px] text-slate-400 mt-1">${esc(info||'خصوصي معتمد')}</p>
+      <div class="mt-2 flex flex-wrap gap-1.5">${availChip(t)}${badgeChips(t)}</div></div>
+      <button onclick="toggleFav('${t.id}',event)" class="shrink-0 w-10 h-10 rounded-xl bg-slate-500/10 flex items-center justify-center" aria-label="المفضلة"><i class="fa-${fav?'solid':'regular'} fa-heart" style="color:${fav?'#ef4444':'#94a3b8'}"></i></button>
     </div>
-    <div class="flex flex-wrap gap-1.5">${availChip(t)}${badgeChips(t)}</div>
-    <div class="flex flex-wrap gap-1.5">${t.subjects.map(s=>`<span onclick="openSubject(this.dataset.s,event)" data-s="${esc(s.name.trim())}" class="tag px-3 py-1 rounded-full bg-blue-500/15 text-blue-400 text-[11px] font-bold">${esc(s.name)}</span>`).join('')}</div>
-    <div class="flex items-center justify-between rounded-xl bg-emerald-500/10 px-3 py-2 text-xs"><span class="text-slate-400">سعر الشرح للترم</span><b class="text-sm">${priceText(t)}</b></div></div>`;
+    <div class="tutorStats">
+      <div class="tutorStat"><small>الجنسية</small><strong>${flagOf(t.nationality)} ${esc(t.nationality||'غير محددة')}</strong></div>
+      <div class="tutorStat"><small>متوسط سعر المادة</small><strong>${esc(avgTutorPrice(t))} ${SAR}</strong></div>
+    </div>
+    <div class="tutorSubjects"><p class="text-[11px] font-bold text-slate-400 mb-1">المواد التي يشرحها</p><div class="flex flex-wrap gap-1.5">${t.subjects.map(s=>`<span onclick="openSubject(this.dataset.s,event)" data-s="${esc(s.name.trim())}" class="tag px-3 py-1.5 rounded-xl bg-blue-500/10 text-blue-400 text-[11px] font-bold">${esc(s.name)}</span>`).join('')}</div></div>
+    <div class="tutorFoot"><span class="text-[11px] font-bold text-slate-400">أسعار المواد</span><strong class="text-sm">${priceText(t)}</strong></div>
+  </div>`;
 }
+
 function doSearch(q){
   q=String(q||'').trim();const box=$('results');if(!q){box.innerHTML='';return}
   const f=db.tutors.map(t=>({t,sc:qScore(t,q)})).filter(x=>x.sc>0).sort((a,b)=>b.sc-a.sc).map(x=>x.t);
@@ -347,7 +386,7 @@ let F={q:'',sort:'rating'};
 const fchip=(label,on,js)=>`<button onclick="${js}" class="shrink-0 px-3 py-1.5 rounded-full border text-[11px] font-bold transition ${on?'bg-blue-500 text-white border-blue-500':'border-slate-500/40 bg-slate-500/10'}">${label}</button>`;
 function renderList(){
   $('listFilters').innerHTML=`
-    <div class="relative"><input id="fq" oninput="F.q=this.value;applyFilters()" value="${esc(F.q)}" placeholder="ابحث بالاسم أو المادة" class="inp !pr-9"><i class="bi bi-magnifying-glass absolute right-3 top-3.5 text-xs" style="color:#94a3b8"></i></div>
+    <div class="relative"><input id="fq" oninput="F.q=this.value;applyFilters()" value="${esc(F.q)}" placeholder="ابحث بالاسم أو المادة" class="inp !pr-9"><i class="fa-solid fa-magnifying-glass absolute right-3 top-3.5 text-xs" style="color:#94a3b8"></i></div>
     <div class="flex gap-2 overflow-x-auto pb-1">${[['rating','الأعلى تقييماً'],['ver','الموثقون أولاً'],['price','الأقل سعراً']].map(([k,l])=>fchip(l,F.sort===k,`F.sort='${k}';renderList()`)).join('')}</div>`;
   ANIM=true;applyFilters();ANIM=false;
 }
@@ -391,26 +430,27 @@ async function reportReview(tid,rid){
 function openCard(id){
   const t=db.tutors.find(x=>x.id===id);if(!t)return;
   const price=v=>v?`<b class="text-lg">${esc(v)}</b> <span class="text-xs">${SAR}</span>`:'<span class="text-slate-400">—</span>';
-  const wa=t.whatsapp?`<a target="_blank" onclick="trk('wa','${id}')" href="https://wa.me/${t.whatsapp.replace(/\D/g,'')}" class="btn bg-emerald-500 !py-3.5 text-sm"><i class="bi bi-whatsapp"></i> واتساب</a>`:'';
+  const wa=t.whatsapp?`<a target="_blank" onclick="trk('wa','${id}')" href="https://wa.me/${t.whatsapp.replace(/\D/g,'')}" class="btn bg-emerald-500 !py-3.5 text-sm"><i class="fa-brands fa-whatsapp"></i> واتساب</a>`:'';
   const tlh=t.telegram?(/^https?:/i.test(t.telegram)?t.telegram:'https://t.me/'+t.telegram.replace('@','')):'';
-  const tl=tlh?`<a target="_blank" onclick="trk('tg','${id}')" href="${esc(tlh)}" class="btn bg-sky-500 !py-3.5 text-sm"><i class="bi bi-telegram"></i> تليجرام</a>`:'';
+  const tl=tlh?`<a target="_blank" onclick="trk('tg','${id}')" href="${esc(tlh)}" class="btn bg-sky-500 !py-3.5 text-sm"><i class="fa-brands fa-telegram"></i> تليجرام</a>`:'';
   const info=[t.gender,t.age?t.age+' سنة':'',t.nationality].filter(Boolean).join(' • ');
   const fav=FAV.has(id);
   $('card').innerHTML=`<div class="glass tcard rounded-3xl p-6 space-y-5 pop">
-    <div class="flex items-center gap-3">${avatar(t,60)}<div class="min-w-0 flex-1"><h3 class="text-xl font-black flex items-center gap-2 flex-wrap"><span>${esc(t.name)}</span><span>${flagOf(t.nationality)}</span>${vb(t,22)}</h3><p class="text-xs text-slate-400 mt-1">${esc(info)}</p></div>${ratingBadge(t,72)}</div>
+    <div class="flex items-center gap-3">${avatar(t,60)}<div class="min-w-0 flex-1"><h3 class="text-xl font-black flex items-center gap-2 flex-wrap"><span>${esc(t.name)}</span>${vb(t,22)}</h3><p class="text-xs text-slate-400 mt-1">${esc(info)}</p></div>${ratingBadge(t,72)}</div>
+    <div class="tutorStats"><div class="tutorStat"><small>الجنسية</small><strong>${flagOf(t.nationality)} ${esc(t.nationality||'غير محددة')}</strong></div><div class="tutorStat"><small>متوسط السعر</small><strong>${esc(avgTutorPrice(t))} ${SAR}</strong></div></div>
     <div class="flex flex-wrap gap-1.5">${availChip(t)}${badgeChips(t)}</div>
     ${t.bio?`<p class="text-xs leading-relaxed text-slate-400">${esc(t.bio)}</p>`:''}
     ${t.availability==='full'?`<p class="text-[11px] rounded-xl bg-red-500/10 text-red-500 p-2 text-center font-bold">هذا الخصوصي ممتلئ حالياً، تقدر تتواصل معه وتسأل عن توفر مقعد.</p>`:''}
     <div class="space-y-3">${t.subjects.map((s,idx)=>`<div class="subjectDetail space-y-3">
-      <div class="flex items-center justify-between gap-2"><h4 class="font-black text-base">${esc(s.name)}</h4>${s.trial?`<a target="_blank" onclick="trk('trial','${id}')" href="${esc(s.trial)}" class="text-[11px] px-3 py-1.5 rounded-lg bg-amber-500 text-white font-bold shrink-0"><i class="bi bi-play-circle"></i> شرح تجريبي</a>`:''}</div>
-      ${s.targets?`<div class="tutorMeta"><span><i class="bi bi-people"></i> الفئة المستهدفة: ${esc(s.targets)}</span></div>`:''}
+      <div class="flex items-center justify-between gap-2"><h4 class="font-black text-base">${esc(s.name)}</h4>${s.trial?`<a target="_blank" onclick="trk('trial','${id}')" href="${esc(s.trial)}" class="text-[11px] px-3 py-1.5 rounded-lg bg-amber-500 text-white font-bold shrink-0"><i class="fa-solid fa-circle-play"></i> شرح تجريبي</a>`:''}</div>
+      ${s.targets?`<div class="tutorMeta"><span><i class="fa-solid fa-users"></i> الفئة المستهدفة: ${esc(s.targets)}</span></div>`:''}
       <div class="rounded-xl bg-emerald-500/10 py-3 text-center"><div class="text-[11px] text-slate-400 mb-0.5">سعر الشرح للترم كامل</div>${price(s.price||s.onsite)}</div>
       ${regBlock(t,idx)}</div>`).join('')}</div>
     <div class="grid grid-cols-2 gap-3">${wa}${tl}</div>
     <div class="grid grid-cols-3 gap-2 text-[11px] font-bold">
-      <button onclick="toggleFav('${id}');openCard('${id}')" class="py-2.5 rounded-xl border border-slate-500/30 bg-slate-500/10"><i class="bi-${fav?'solid':'regular'} fa-heart" style="color:${fav?'#ef4444':'#94a3b8'}"></i> المفضلة</button>
-      <button onclick="shareTutor('${id}')" class="py-2.5 rounded-xl border border-slate-500/30 bg-slate-500/10"><i class="bi bi-share" style="color:#3b82f6"></i> مشاركة</button>
-      <button onclick="reportTutor('${id}')" class="py-2.5 rounded-xl border border-slate-500/30 bg-slate-500/10"><i class="bi bi-flag" style="color:#94a3b8"></i> إبلاغ</button></div>
+      <button onclick="toggleFav('${id}');openCard('${id}')" class="py-2.5 rounded-xl border border-slate-500/30 bg-slate-500/10"><i class="fa-${fav?'solid':'regular'} fa-heart" style="color:${fav?'#ef4444':'#94a3b8'}"></i> المفضلة</button>
+      <button onclick="shareTutor('${id}')" class="py-2.5 rounded-xl border border-slate-500/30 bg-slate-500/10"><i class="fa-solid fa-share-nodes" style="color:#3b82f6"></i> مشاركة</button>
+      <button onclick="reportTutor('${id}')" class="py-2.5 rounded-xl border border-slate-500/30 bg-slate-500/10"><i class="fa-regular fa-flag" style="color:#94a3b8"></i> إبلاغ</button></div>
     <button onclick="closeCard()" class="w-full text-sm text-slate-400 py-1.5">إغلاق</button></div>`;
   $('overlay').classList.remove('hidden');$('overlay').classList.add('flex');
 }
@@ -449,10 +489,10 @@ function regBlock(t,i){
   const sn=t.subjects[i].name.trim();
   if(me.tutorId===t.id)return '';
   const e=ENR.find(x=>x.tutor_id===t.id&&x.subject===sn);
-  if(e&&e.status==='pending')return `<div class="rounded-xl bg-amber-500/10 p-2.5 text-center text-[11px] font-bold text-amber-500"><i class="bi bi-hourglass-split"></i> تسجيلك بانتظار قبول الخصوصي</div>`;
-  if(e&&e.status==='accepted')return `<div class="rounded-xl bg-emerald-500/10 p-2.5 text-center text-[11px] font-bold text-emerald-500"><i class="bi bi-circle-check"></i> تم قبولك ${e.channel_added?'• تمت إضافتك لقناة الشرح':'• بانتظار إضافتك لقناة الشرح'}</div>`;
+  if(e&&e.status==='pending')return `<div class="rounded-xl bg-amber-500/10 p-2.5 text-center text-[11px] font-bold text-amber-500"><i class="fa-solid fa-hourglass-half"></i> تسجيلك بانتظار قبول الخصوصي</div>`;
+  if(e&&e.status==='accepted')return `<div class="rounded-xl bg-emerald-500/10 p-2.5 text-center text-[11px] font-bold text-emerald-500"><i class="fa-solid fa-circle-info"></i> تم قبولك ${e.channel_added?'• تمت إضافتك لقناة الشرح':'• بانتظار إضافتك لقناة الشرح'}</div>`;
   if(t.availability==='full')return `<div class="rounded-xl bg-red-500/10 p-2.5 text-center text-[11px] font-bold text-red-500">ممتلئ هذا الترم</div>`;
-  return `${e&&e.status==='rejected'?'<p class="text-[10px] text-red-500 text-center">لم يقبل الخصوصي تسجيلك السابق</p>':''}<button onclick="enroll('${t.id}',${i})" class="btn bg-blue-500 !py-3 text-sm"><i class="bi bi-person-plus"></i> سجّل في هذه المادة</button>`;
+  return `${e&&e.status==='rejected'?'<p class="text-[10px] text-red-500 text-center">لم يقبل الخصوصي تسجيلك السابق</p>':''}<button onclick="enroll('${t.id}',${i})" class="btn bg-blue-500 !py-3 text-sm"><i class="fa-solid fa-user-plus"></i> سجّل في هذه المادة</button>`;
 }
 function enroll(id,i){
   if(!me.authed)return alert('افتح المنصة من داخل تليجرام أولاً');
@@ -486,19 +526,25 @@ const rateLeft=e=>Math.ceil(((CFG.rateDelayDays??14)*DAYMS-(Date.now()-accT(e)))
 const PAY={none:['لم يدفع','#ef4444'],partial:['دفع جزء','#f59e0b'],full:['دفع كامل','#10b981']};
 const payChip=e=>{const p=PAY[e.pay_status||'none'];return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold" style="background:${p[1]}22;color:${p[1]}">${p[0]}${e.pay_status==='partial'&&e.pay_note?': '+esc(e.pay_note):''}</span>`};
 const contactBtns=t=>{if(!t)return '';const tlh=t.telegram?(/^https?:/i.test(t.telegram)?t.telegram:'https://t.me/'+t.telegram.replace('@','')):'';
-  return `<div class="grid grid-cols-2 gap-2">${t.whatsapp?`<a target="_blank" href="https://wa.me/${t.whatsapp.replace(/\D/g,'')}" class="btn bg-emerald-500 !py-2.5 text-xs"><i class="bi bi-whatsapp"></i> واتساب</a>`:''}${tlh?`<a target="_blank" href="${esc(tlh)}" class="btn bg-sky-500 !py-2.5 text-xs"><i class="bi bi-telegram"></i> تليجرام</a>`:''}</div>`};
+  return `<div class="grid grid-cols-2 gap-2">${t.whatsapp?`<a target="_blank" href="https://wa.me/${t.whatsapp.replace(/\D/g,'')}" class="btn bg-emerald-500 !py-2.5 text-xs"><i class="fa-brands fa-whatsapp"></i> واتساب</a>`:''}${tlh?`<a target="_blank" href="${esc(tlh)}" class="btn bg-sky-500 !py-2.5 text-xs"><i class="fa-brands fa-telegram"></i> تليجرام</a>`:''}</div>`};
+function renderMySubjects(){
+  const list=ENR.filter(e=>e.status==='accepted');
+  const box=$('mySubjectsBox');
+  if(!list.length){box.innerHTML=`<div class="glass rounded-3xl p-8 text-center space-y-3"><div class="text-3xl text-blue-500"><i class="fa-solid fa-book-open"></i></div><h3 class="font-black">ما عندك مواد مقبولة حتى الآن</h3><p class="text-xs text-slate-400">تظهر هنا المواد بعد قبول الخصوصي تسجيلك. تقدر تتابع الطلبات من تسجيلاتي.</p><button onclick="go('enr')" class="btn bg-blue-500">عرض تسجيلاتي</button></div>`;return}
+  box.innerHTML=list.map((e,i)=>{const t=db.tutors.find(x=>x.id===e.tutor_id);return `<div class="glass tcard space-y-3" style="border-right:4px solid ${['#3b82f6','#10b981','#f59e0b','#8b5cf6'][i%4]}!important"><div class="flex items-center justify-between gap-2"><h3 class="font-black text-base">${esc(e.subject)}</h3><span class="text-[10px] rounded-lg px-2 py-1 bg-emerald-500/10 text-emerald-500 font-bold">مقبول</span></div><p class="text-xs text-slate-400">الخصوصي: <b>${esc(e.tutor_name||t?.name||'')}</b></p><div class="flex justify-between gap-2 text-xs"><span>${e.channel_added?'تمت إضافتك لقناة الشرح':'بانتظار إضافتك لقناة الشرح'}</span>${payChip(e)}</div>${t?`<button class="btn bg-blue-500" onclick="openCard('${t.id}')">عرض الخصوصي</button>`:''}</div>`}).join('');
+}
 function renderEnr(){
   const te=CFG.termEnd;
   const act=ENR.filter(e=>e.status!=='cancelled'),by=new Map();
   act.forEach(e=>{(by.get(e.tutor_id)||by.set(e.tutor_id,[]).get(e.tutor_id)).push(e)});
-  $('enrBox').innerHTML=(te?`<p class="text-[11px] text-slate-400 text-center"><i class="bi bi-calendar"></i> نهاية الترم: ٢٠ رجب ${te.key}هـ (${te.date}) وبعدها يفتح تقييم نهاية الترم</p>`:'')+[...by.entries()].map(([tid,list])=>{const t=db.tutors.find(x=>x.id===tid);
+  $('enrBox').innerHTML=(te?`<p class="text-[11px] text-slate-400 text-center"><i class="fa-solid fa-circle-info"></i> نهاية الترم: ٢٠ رجب ${te.key}هـ (${te.date}) وبعدها يفتح تقييم نهاية الترم</p>`:'')+[...by.entries()].map(([tid,list])=>{const t=db.tutors.find(x=>x.id===tid);
     return `<div class="glass tcard rounded-2xl p-4 space-y-3 text-xs">
     <div class="flex items-center gap-3">${t?avatar(t,44):''}<div class="min-w-0 flex-1"><button onclick="openCard('${tid}')" class="font-black text-sm text-right flex items-center gap-1.5"><span>${esc(list[0].tutor_name)}</span>${vb(t,16)}</button>${t?`<p class="text-[10px] text-slate-400">${esc([t.gender,t.age?t.age+' سنة':''].filter(Boolean).join(' • '))}</p>`:''}</div></div>
     ${list.map(e=>`<div class="rounded-xl border border-slate-500/20 p-3 space-y-2">
-      <div class="flex items-center justify-between gap-2"><p class="font-bold"><i class="bi bi-book text-slate-400"></i> ${esc(e.subject)}</p>${stChip(e.status)}</div>
-      ${e.status==='accepted'?`<p class="${e.channel_added?'text-emerald-500':'text-amber-500'} font-bold">${e.channel_added?'✅ تمت إضافتك لقناة الشرح':'⏳ بانتظار إضافتك لقناة الشرح (خلال ٢٤ ساعة من القبول)'}</p>${e.price_due?`<div class="flex items-center justify-between"><span class="text-slate-400">المبلغ المطلوب</span><b>${e.price_due} ${SAR}${e.discount_pct?` <span class="text-emerald-500 text-[10px]">(خصم ${e.discount_pct}% • ${esc(e.code)})</span>`:''}</b></div>`:''}<div class="flex items-center justify-between"><span class="text-slate-400">الدفع</span>${payChip(e)}</div>${FINAL.has(e.tutor_id)?`<button onclick="openRate('${e.tutor_id}')" class="btn bg-amber-500">📅 قيّم تقييم نهاية الترم</button>`:''}${rateLeft(e)>0?`<p class="rounded-xl bg-slate-500/10 p-2.5 text-center text-[11px] font-bold text-slate-400"><i class="bi bi-clock"></i> يفتح تقييم الخصوصي بعد ${rateLeft(e)} يوم، بعد ما تجرّب الشرح</p>`:`<button onclick="openRate('${e.tutor_id}')" class="btn bg-emerald-500">قيّم الخصوصي</button>`}`:''}
+      <div class="flex items-center justify-between gap-2"><p class="font-bold"><i class="fa-solid fa-book text-slate-400"></i> ${esc(e.subject)}</p>${stChip(e.status)}</div>
+      ${e.status==='accepted'?`<p class="${e.channel_added?'text-emerald-500':'text-amber-500'} font-bold">${e.channel_added?'✅ تمت إضافتك لقناة الشرح':'⏳ بانتظار إضافتك لقناة الشرح (خلال ٢٤ ساعة من القبول)'}</p>${e.price_due?`<div class="flex items-center justify-between"><span class="text-slate-400">المبلغ المطلوب</span><b>${e.price_due} ${SAR}${e.discount_pct?` <span class="text-emerald-500 text-[10px]">(خصم ${e.discount_pct}% • ${esc(e.code)})</span>`:''}</b></div>`:''}<div class="flex items-center justify-between"><span class="text-slate-400">الدفع</span>${payChip(e)}</div>${FINAL.has(e.tutor_id)?`<button onclick="openRate('${e.tutor_id}')" class="btn bg-amber-500">📅 قيّم تقييم نهاية الترم</button>`:''}${rateLeft(e)>0?`<p class="rounded-xl bg-slate-500/10 p-2.5 text-center text-[11px] font-bold text-slate-400"><i class="fa-solid fa-circle-info"></i> يفتح تقييم الخصوصي بعد ${rateLeft(e)} يوم، بعد ما تجرّب الشرح</p>`:`<button onclick="openRate('${e.tutor_id}')" class="btn bg-emerald-500">قيّم الخصوصي</button>`}`:''}
       ${e.status==='pending'?`<button onclick="cancelEnr('${e.id}')" class="btn bg-slate-500">إلغاء الطلب</button>`:''}</div>`).join('')}
-    ${contactBtns(t)}<button onclick="complainTutor('${tid}')" class="w-full py-2 rounded-xl border border-red-500/40 text-red-500 text-xs font-bold"><i class="bi bi-triangle-exclamation"></i> رفع شكوى على الخصوصي</button></div>`}).join('')||'<p class="text-center text-xs text-slate-400 p-6">لم تسجّل عند أي خصوصي بعد</p>';
+    ${contactBtns(t)}<button onclick="complainTutor('${tid}')" class="w-full py-2 rounded-xl border border-red-500/40 text-red-500 text-xs font-bold"><i class="fa-solid fa-circle-info"></i> رفع شكوى على الخصوصي</button></div>`}).join('')||'<p class="text-center text-xs text-slate-400 p-6">لم تسجّل عند أي خصوصي بعد</p>';
 }
 // صفحة الخصوصي: قائمة طلابه، وبطاقة لكل طالب
 let STU_OPEN=null;
@@ -513,7 +559,7 @@ function renderStudents(){
         <span class="w-10 h-10 rounded-full bg-blue-500/15 text-blue-500 font-black flex items-center justify-center shrink-0">${esc((e.who||'?').trim().charAt(0))}</span>
         <div class="min-w-0 flex-1"><b class="text-sm block truncate">${esc(e.who)}</b><p class="text-[11px] text-slate-400 truncate">${esc(e.subject)}</p></div>
         <div class="flex flex-col items-end gap-1 shrink-0">${stChip(e.status,'t')}${e.status==='accepted'?`<span class="text-[10px] font-bold" style="color:${d[0]}">● ${d[1]}</span>`:''}</div>
-        <i class="bi bi-chevron-left text-slate-400 text-xs"></i></button>
+        <i class="fa-solid fa-chevron-left text-slate-400 text-xs"></i></button>
       ${e.status==='pending'?`<div class="grid grid-cols-2 gap-2"><button onclick="tutorRespond('${e.id}','accept')" class="btn bg-emerald-500">قبول</button><button onclick="tutorRespond('${e.id}','reject')" class="btn bg-red-500">رفض</button></div>`:''}</div>`};
   $('stuBox').innerHTML=(pend.length?`<p class="text-xs font-black text-amber-500">طلبات جديدة (${pend.length})</p>${pend.map(row).join('')}`:'')+
     (acc.length?`<p class="text-xs font-black text-slate-400 pt-1">الطلاب المقبولون (${acc.length})</p>${acc.map(row).join('')}`:'')||'<p class="text-center text-xs text-slate-400 p-6">لا يوجد طلاب مسجلون بعد</p>';
@@ -546,8 +592,8 @@ function openStudent(id){
       ${e.price_due?row('المبلغ المطلوب',`${e.price_due} ${SAR}${e.discount_pct?` <span class="text-emerald-500 text-[10px]">(كود ${esc(e.code)} • خصم ${e.discount_pct}%)</span>`:''}`):''}</div>
     ${e.status==='pending'?`<div class="grid grid-cols-2 gap-2"><button onclick="tutorRespond('${e.id}','accept')" class="btn bg-emerald-500">قبول</button><button onclick="tutorRespond('${e.id}','reject')" class="btn bg-red-500">رفض</button></div>`:''}
     ${chBlock}${payBlock}
-    <div class="grid grid-cols-2 gap-2">${e.phone?`<a target="_blank" href="https://wa.me/${esc(e.phone)}" class="btn bg-emerald-500 !py-3"><i class="bi bi-whatsapp"></i> واتساب</a>`:''}<a target="_blank" href="${tgl}" class="btn bg-sky-500 !py-3"><i class="bi bi-telegram"></i> تليجرام</a></div>
-    <button onclick="complainStudent('${e.id}')" class="w-full py-2.5 rounded-xl border border-red-500/40 text-red-500 text-xs font-bold"><i class="bi bi-triangle-exclamation"></i> رفع شكوى على الطالب</button>
+    <div class="grid grid-cols-2 gap-2">${e.phone?`<a target="_blank" href="https://wa.me/${esc(e.phone)}" class="btn bg-emerald-500 !py-3"><i class="fa-brands fa-whatsapp"></i> واتساب</a>`:''}<a target="_blank" href="${tgl}" class="btn bg-sky-500 !py-3"><i class="fa-brands fa-telegram"></i> تليجرام</a></div>
+    <button onclick="complainStudent('${e.id}')" class="w-full py-2.5 rounded-xl border border-red-500/40 text-red-500 text-xs font-bold"><i class="fa-solid fa-circle-info"></i> رفع شكوى على الطالب</button>
     <button onclick="closeCard()" class="w-full text-sm text-slate-400 py-1.5">إغلاق</button></div>`;
   $('overlay').classList.remove('hidden');$('overlay').classList.add('flex');
 }
@@ -581,8 +627,8 @@ function openRate(id){
   const finalForm=(!isMe&&FINAL.has(id))?`<div class="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3 space-y-3"><p class="text-sm font-black">📅 تقييم نهاية الترم</p><p class="text-[11px] text-slate-400">انتهى الترم، قيّم الخصوصي بعد ما أكملت معه.</p>${CATS.map(([k,l])=>sl(k,l,'f')).join('')}
       <textarea id="rcf" rows="2" placeholder="تعليقك (اختياري)" class="inp"></textarea>
       <button onclick="sendRate('${id}',true)" class="btn bg-amber-500">إرسال تقييم نهاية الترم</button></div>`:'';
-  const form=finalForm+(isMe?'':(!mine&&waitDays>0)?`<div class="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-3 space-y-1 text-xs"><p class="font-bold"><i class="bi bi-clock"></i> التقييم يفتح بعد ${waitDays} يوم</p><p class="text-slate-400 leading-relaxed">تقدر تقيّم الخصوصي بعد مدة من قبول تسجيلك، عشان يكون تقييمك بعد ما تجرّب الشرح.</p></div>`:(!mine&&!eligible)?`<div class="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-3 space-y-2 text-xs"><p class="font-bold"><i class="bi bi-lock"></i> التقييم لمن سجّل عند الخصوصي</p><p class="text-slate-400 leading-relaxed">تقدر تقيّم الخصوصي بعد ما يقبل تسجيلك عنده، عشان تبقى التقييمات من طلاب شرح لهم فعلاً.</p><button onclick="openCard('${id}')" class="btn bg-blue-500">سجّل عند الخصوصي</button></div>`:mine?`<div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-2 text-xs">
-      <p class="font-bold"><i class="bi bi-circle-check"></i> سبق أن قيّمت هذا الخصوصي (${mine.score}/100)</p>
+  const form=finalForm+(isMe?'':(!mine&&waitDays>0)?`<div class="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-3 space-y-1 text-xs"><p class="font-bold"><i class="fa-solid fa-circle-info"></i> التقييم يفتح بعد ${waitDays} يوم</p><p class="text-slate-400 leading-relaxed">تقدر تقيّم الخصوصي بعد مدة من قبول تسجيلك، عشان يكون تقييمك بعد ما تجرّب الشرح.</p></div>`:(!mine&&!eligible)?`<div class="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-3 space-y-2 text-xs"><p class="font-bold"><i class="fa-solid fa-circle-info"></i> التقييم لمن سجّل عند الخصوصي</p><p class="text-slate-400 leading-relaxed">تقدر تقيّم الخصوصي بعد ما يقبل تسجيلك عنده، عشان تبقى التقييمات من طلاب شرح لهم فعلاً.</p><button onclick="openCard('${id}')" class="btn bg-blue-500">سجّل عند الخصوصي</button></div>`:mine?`<div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-2 text-xs">
+      <p class="font-bold"><i class="fa-solid fa-circle-info"></i> سبق أن قيّمت هذا الخصوصي (${mine.score}/100)</p>
       <p class="text-slate-400">لا يمكن تعديل التقييم مباشرة. أرسل طلباً للإدارة وسيتم فتح التقييم لك بعد الموافقة.</p>
       <textarea id="er" rows="2" class="inp" placeholder="سبب طلب التعديل (اختياري)"></textarea>
       <button onclick="reqEdit('${id}')" class="btn bg-amber-500">طلب تعديل التقييم</button></div>`
@@ -590,7 +636,7 @@ function openRate(id){
       <textarea id="rc" rows="2" placeholder="تعليقك (اختياري)" class="inp"></textarea>
       <button onclick="sendRate('${id}')" class="btn bg-emerald-500">إرسال التقييم</button></div>`);
   const reviews=list.slice().reverse().map(r=>`<div class="rounded-2xl bg-slate-500/10 p-3 space-y-1.5 text-xs">
-      <div class="flex items-center justify-between"><b>${esc(r.who)}${r.term?` <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-500">نهاية الترم</span>`:''}</b><div class="flex items-center gap-2"><b style="color:${rc(r.score)}">${r.score}/100</b>${r.mine||isMe?'':`<button title="إبلاغ عن تقييم" onclick="reportReview('${id}','${r.id}')"><i class="bi bi-flag" style="color:#94a3b8"></i></button>`}</div></div>
+      <div class="flex items-center justify-between"><b>${esc(r.who)}${r.term?` <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-500">نهاية الترم</span>`:''}</b><div class="flex items-center gap-2"><b style="color:${rc(r.score)}">${r.score}/100</b>${r.mine||isMe?'':`<button title="إبلاغ عن تقييم" onclick="reportReview('${id}','${r.id}')"><i class="fa-regular fa-flag" style="color:#94a3b8"></i></button>`}</div></div>
       ${r.explain?`<div class="flex gap-3 text-[10px] text-slate-400"><span>الشرح ${r.explain}</span><span>الأسلوب ${r.style}</span><span>التعاون ${r.coop}</span></div>`:''}
       ${r.text?`<p class="text-slate-400 leading-relaxed">${esc(r.text)}</p>`:''}
       ${r.reply?`<div class="rounded-xl bg-blue-500/10 p-2 text-[11px] leading-relaxed"><b class="text-blue-500">رد الخصوصي:</b> <span>${esc(r.reply)}</span></div>`:''}
@@ -648,7 +694,7 @@ function parseTg(v){v=String(v||'').trim().replace(/^https?:\/\//i,'').replace(/
 /* ===== محرر المواد (مشترك بين التسجيل والإدارة) ===== */
 function subjRow(s={}){
   return `<div class="subj rounded-xl border border-slate-500/20 p-2 space-y-2">
-    <div class="flex gap-2"><input class="inp s-name" placeholder="اسم مادة واحدة فقط (مثال: ميكانيكا المواد)" value="${esc(s.name)}"><button type="button" onclick="this.closest('.subj').remove()" class="px-3 rounded-xl bg-red-500"><i class="bi bi-x-lg"></i></button></div>
+    <div class="flex gap-2"><input class="inp s-name" placeholder="اسم مادة واحدة فقط (مثال: ميكانيكا المواد)" value="${esc(s.name)}"><button type="button" onclick="this.closest('.subj').remove()" class="px-3 rounded-xl bg-red-500"><i class="fa-solid fa-circle-info"></i></button></div>
     <input class="inp s-tg" placeholder="الطلاب المستهدفين (مثال: طلاب الهندسة الميكانيكية والمدنية)" value="${esc(s.targets)}">
     <div class="relative"><input class="inp s-pr !pl-10" type="number" inputmode="numeric" min="1" placeholder="سعر الشرح للمادة خلال الترم كامل" value="${esc(s.price||s.onsite)}"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">${SAR}</span></div>
     <input class="inp s-tr" dir="ltr" placeholder="رابط قناة الشرح التجريبي (قناة عامة: t.me/channel)" value="${esc(s.trial)}"></div>`;
@@ -666,7 +712,7 @@ function formFields(p,t={},mode='full'){
   const tgv=t.telegram?String(t.telegram):'';
   return `<div id="${p}personal" class="space-y-3 ${mode==='self'?'hidden':''}">`+sec(1,'البيانات الشخصية')+`
   <input id="${p}name" class="inp" placeholder="الاسم (ثنائي أو ثلاثي)" value="${esc(t.name)}">
-  <div class="flex gap-2 items-center"><div class="natwrap relative flex-1"><input id="${p}nat" autocomplete="off" onfocus="natOpen('${p}')" oninput="natOpen('${p}');$('${p}flag').textContent=flagOf(this.value)" class="inp" placeholder="الجنسية (اضغط واختر أو اكتب)" value="${esc(t.nationality)}"><i class="bi bi-chevron-down absolute left-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style="color:#94a3b8"></i><div id="${p}natbox" class="natbox hidden absolute z-30 top-full mt-1 w-full max-h-56 overflow-y-auto rounded-2xl border border-slate-500/30 shadow-2xl bg-white dark:bg-slate-900"></div></div><span id="${p}flag" class="text-2xl w-9 text-center shrink-0">${flagOf(t.nationality)}</span></div>
+  <div class="flex gap-2 items-center"><div class="natwrap relative flex-1"><input id="${p}nat" autocomplete="off" onfocus="natOpen('${p}')" oninput="natOpen('${p}');$('${p}flag').textContent=flagOf(this.value)" class="inp" placeholder="الجنسية (اضغط واختر أو اكتب)" value="${esc(t.nationality)}"><i class="fa-solid fa-chevron-down absolute left-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style="color:#94a3b8"></i><div id="${p}natbox" class="natbox hidden absolute z-30 top-full mt-1 w-full max-h-56 overflow-y-auto rounded-2xl border border-slate-500/30 shadow-2xl bg-white dark:bg-slate-900"></div></div><span id="${p}flag" class="text-2xl w-9 text-center shrink-0">${flagOf(t.nationality)}</span></div>
   <input id="${p}age" type="number" inputmode="numeric" class="inp" placeholder="العمر" value="${esc(t.age)}">
   <input type="hidden" id="${p}gender" value="${esc(t.gender)}">
   <div id="${p}gbox" class="grid grid-cols-2 gap-2">${['ذكر','أنثى'].map(g=>`<button type="button" data-g="${g}" onclick="setGender('${p}','${g}')" class="py-3 rounded-xl border text-sm font-bold transition ${t.gender===g?gOn:gOff}">${g==='ذكر'?'♂':'♀'} <span>${g}</span></button>`).join('')}</div>
@@ -675,10 +721,10 @@ function formFields(p,t={},mode='full'){
   <input id="${p}tg" class="inp" dir="ltr" placeholder="@username أو t.me/username" value="${esc(tgv)}">
   `+sec(3,'بيانات المواد')+`
   <div class="flex gap-4 text-[11px] font-bold"><label class="flex items-center gap-1"><input type="radio" name="${p}trm" value="each" ${same?'':'checked'} onchange="trialMode('${p}')" class="accent-blue-500"> رابط تجريبي لكل مادة</label><label class="flex items-center gap-1"><input type="radio" name="${p}trm" value="one" ${same?'checked':''} onchange="trialMode('${p}')" class="accent-blue-500"> رابط واحد لكل المواد</label></div>
-  <p class="text-[10px] text-amber-500 leading-relaxed"><i class="bi bi-circle-info"></i> قناة الشرح التجريبي لازم تكون <b>قناة عامة</b> يبدأ رابطها بـ t.me (مثال: t.me/mychannel). روابط الدعوة الخاصة لا تُقبل.</p>
+  <p class="text-[10px] text-amber-500 leading-relaxed"><i class="fa-solid fa-circle-info"></i> قناة الشرح التجريبي لازم تكون <b>قناة عامة</b> يبدأ رابطها بـ t.me (مثال: t.me/mychannel). روابط الدعوة الخاصة لا تُقبل.</p>
   <input id="${p}trone" class="inp hidden" dir="ltr" placeholder="رابط قناة الشرح التجريبي (قناة عامة: t.me/channel)" value="${same?esc(subs[0].trial):''}">
   <div id="${p}subjs" class="space-y-2">${subs.map(subjRow).join('')}</div>
-  <p class="text-[10px] text-slate-400"><i class="bi bi-circle-info"></i> كل بلوك لمادة واحدة فقط، ولكل مادة إضافية اضغط «+ إضافة مادة».</p>
+  <p class="text-[10px] text-slate-400"><i class="fa-solid fa-circle-info"></i> كل بلوك لمادة واحدة فقط، ولكل مادة إضافية اضغط «+ إضافة مادة».</p>
   <button type="button" onclick="addSubj('${p}subjs')" class="w-full py-2 rounded-xl border border-dashed border-blue-500/50 text-blue-500 text-xs font-bold">+ إضافة مادة</button>`;
 }
 function readForm(p,mode='full'){
@@ -717,7 +763,7 @@ function renderApply(){
     <p>🔹 يجب مراعاة الطلاب والرد على استفساراتهم وعدم إهمالهم.</p>
     <p>🔹 في حال وجود شكوى صحيحة يأخذ الخصوصي إنذار، وعند الوصول لـ 3 إنذارات يُلغى من قائمة الخصوصيين.</p>
     <p class="font-bold pt-1">هل تتعهد بالالتزام بهذه القوانين؟</p></div>
-    <div class="grid grid-cols-2 gap-2"><button onclick="submitApply()" class="btn bg-emerald-500"><i class="bi bi-check"></i> موافق</button><button onclick="declineApply()" class="btn bg-red-500"><i class="bi bi-x-lg"></i> لا</button></div>`;
+    <div class="grid grid-cols-2 gap-2"><button onclick="submitApply()" class="btn bg-emerald-500"><i class="fa-solid fa-check"></i> موافق</button><button onclick="declineApply()" class="btn bg-red-500"><i class="fa-solid fa-circle-info"></i> لا</button></div>`;
   const setPledge=()=>{const v=$('apname').value.trim().replace(/\s+/g,' '),el=$('pledgeName');
     el.textContent=v||'(اسمك)';
     el.className=v?'inline-block px-2 py-0.5 rounded-lg bg-amber-500 text-white font-black':'text-slate-400 font-bold'};
@@ -743,17 +789,17 @@ async function renderMe(){
   const stat=(l,v,c)=>`<div class="rounded-2xl bg-slate-500/10 p-3 text-center"><div class="text-xl font-black" style="color:${c}">${v}</div><div class="text-[10px] text-slate-400 mt-1">${l}</div></div>`;
   box.innerHTML=`
     <div class="flex items-center gap-3">${avatar(t,64)}<div class="flex-1 min-w-0"><h3 class="font-black flex items-center gap-1.5 flex-wrap"><span>${esc(t.name)}</span><span>${flagOf(t.nationality)}</span>${vb(t,18)}</h3><div class="flex flex-wrap gap-1 mt-1">${availChip(t)}${badgeChips({badges:st.badges||[]})}</div></div></div>
-    ${pe?`<div class="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 text-[11px] leading-relaxed"><b class="text-amber-500"><i class="bi bi-hourglass-split"></i> <span>تعديلاتك بانتظار موافقة الإدارة</span></b><br><span>${pe.fields.map(f=>FLD[f]||f).join('، ')}</span></div>`:''}
+    ${pe?`<div class="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 text-[11px] leading-relaxed"><b class="text-amber-500"><i class="fa-solid fa-hourglass-half"></i> <span>تعديلاتك بانتظار موافقة الإدارة</span></b><br><span>${pe.fields.map(f=>FLD[f]||f).join('، ')}</span></div>`:''}
     <p class="text-[11px] text-slate-400 leading-relaxed">أي تعديل على بياناتك أو موادك أو صورتك يصل للإدارة أولاً، ولا يظهر للطلاب إلا بعد الموافقة. حالة التوفر فقط تتغير مباشرة.</p>
-    <label class="btn bg-blue-500 cursor-pointer"><i class="bi bi-camera"></i> تغيير الصورة<input type="file" accept="image/*" class="hidden" onchange="uploadMyPhoto(this)"></label>
+    <label class="btn bg-blue-500 cursor-pointer"><i class="fa-solid fa-circle-info"></i> تغيير الصورة<input type="file" accept="image/*" class="hidden" onchange="uploadMyPhoto(this)"></label>
     <p class="text-xs font-black text-slate-400">إحصائيات آخر 30 يوم</p>
     <div class="grid grid-cols-2 gap-2">${stat('نقرات واتساب',st.wa??0,'#10b981')}${stat('نقرات تليجرام',st.tg??0,'#0ea5e9')}${stat('فتح الشرح التجريبي',st.trial??0,'#f59e0b')}${stat('أضافوك للمفضلة',st.favorites??0,'#ef4444')}${stat('متوسط التقييم',st.avg??'—',st.avg?rc(st.avg):'#94a3b8')}${stat('عدد التقييمات',st.ratings??0,'#3b82f6')}</div>
     ${st.unreplied?`<p class="text-[11px] rounded-xl bg-amber-500/10 text-amber-500 p-2 text-center font-bold">${st.unreplied} · تقييمات بدون رد</p>`:''}
     ${st.warnings?`<p class="text-[11px] rounded-xl bg-red-500/10 text-red-500 p-2 text-center font-bold">الإنذارات: ${st.warnings}/3</p>`:''}
-    <button onclick="openRate('${t.id}')" class="btn bg-emerald-500"><i class="bi bi-comments"></i> عرض تقييماتي والرد عليها</button>
-    <button onclick="go('students')" class="btn bg-blue-500"><i class="bi bi-people"></i> طلابي والدفع ${TENR.filter(e=>e.status==='pending').length?`<span class="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px]">${TENR.filter(e=>e.status==='pending').length} جديد</span>`:''}</button>
+    <button onclick="openRate('${t.id}')" class="btn bg-emerald-500"><i class="fa-solid fa-circle-info"></i> عرض تقييماتي والرد عليها</button>
+    <button onclick="go('students')" class="btn bg-blue-500"><i class="fa-solid fa-users"></i> طلابي والدفع ${TENR.filter(e=>e.status==='pending').length?`<span class="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px]">${TENR.filter(e=>e.status==='pending').length} جديد</span>`:''}</button>
     <p class="text-xs font-black text-slate-400 pt-2">أكواد الخصم للطلاب</p>
-    <div class="space-y-1.5">${codes.map(c=>`<div class="flex items-center justify-between rounded-xl bg-slate-500/10 px-3 py-2 text-xs"><span><b dir="ltr">${esc(c.code)}</b> • خصم ${c.percent}% • استُخدم ${c.uses}</span><button onclick="delCode(this.dataset.c)" data-c="${esc(c.code)}" class="text-red-500"><i class="bi bi-trash"></i></button></div>`).join('')||'<p class="text-[11px] text-slate-400 text-center">ما أضفت أكواد بعد</p>'}</div>
+    <div class="space-y-1.5">${codes.map(c=>`<div class="flex items-center justify-between rounded-xl bg-slate-500/10 px-3 py-2 text-xs"><span><b dir="ltr">${esc(c.code)}</b> • خصم ${c.percent}% • استُخدم ${c.uses}</span><button onclick="delCode(this.dataset.c)" data-c="${esc(c.code)}" class="text-red-500"><i class="fa-solid fa-circle-info"></i></button></div>`).join('')||'<p class="text-[11px] text-slate-400 text-center">ما أضفت أكواد بعد</p>'}</div>
     <div class="grid grid-cols-5 gap-2"><input id="cdName" class="inp col-span-2" dir="ltr" maxlength="20" placeholder="الكود"><input id="cdPct" type="number" inputmode="numeric" min="1" max="90" class="inp col-span-2" placeholder="نسبة الخصم %"><button onclick="addCode()" class="rounded-xl bg-blue-500 text-white text-xs font-bold">إضافة</button></div>
     <p class="text-[10px] text-slate-400">الطالب يكتب الكود عند التسجيل ويطلع له السعر بعد الخصم، وتشوفه عندك في «طلابي».</p>
     <p class="text-xs font-black text-slate-400 pt-2">حالة التوفر</p>
@@ -761,7 +807,7 @@ async function renderMe(){
     <div id="meavbox" class="grid grid-cols-2 gap-2"><button type="button" data-g="available" onclick="setAvail('available')" class="py-3 rounded-xl border text-sm font-bold"><span>متاح للطلاب</span></button><button type="button" data-g="full" onclick="setAvail('full')" class="py-3 rounded-xl border text-sm font-bold"><span>ممتلئ</span></button></div>
     <textarea id="mebio" rows="3" maxlength="300" class="inp" placeholder="نبذة عنك (اختياري)">${esc(tv.bio||'')}</textarea>
     ${formFields('me',tv,'self')}
-    <button onclick="saveMe()" class="btn bg-blue-500"><i class="bi bi-floppy-disk"></i> حفظ التغييرات</button>`;
+    <button onclick="saveMe()" class="btn bg-blue-500"><i class="fa-solid fa-circle-info"></i> حفظ التغييرات</button>`;
   setAvail(t.availability||'available');trialMode('me');
 }
 async function resolveComplaint(id,withReply){
@@ -787,7 +833,7 @@ async function uploadMyPhoto(inp){
 
 /* ===== لوحة الإدارة ===== */
 let tab='tutors',editId=null,AD_IMG='';
-const TABS=[['tutors','<i class="bi bi-person-video3"></i> الخصوصيون'],['enrolls','<i class="bi bi-clipboard-check"></i> التسجيلات'],['requests','<i class="bi bi-inbox"></i> الطلبات'],['reports','<i class="bi bi-flag"></i> البلاغات'],['complaints','<i class="bi bi-triangle-exclamation"></i> الشكاوي'],['tedits','<i class="bi bi-user-pen"></i> تعديلات الخصوصيين'],['edits','<i class="bi bi-pen-ruler"></i> تعديل التقييم'],['subjreq','<i class="bi bi-book-medical"></i> المواد المطلوبة'],['stats','<i class="bi bi-chart-line"></i> الإحصائيات'],['bcast','<i class="bi bi-bullhorn"></i> إشعار عام'],['badwords','<i class="bi bi-ban"></i> الكلمات المحظورة'],['terms','<i class="bi bi-scroll"></i> الشروط'],['backup','<i class="bi bi-database"></i> النسخ الاحتياطي']];
+const TABS=[['tutors','<i class="fa-solid fa-chalkboard-user"></i> الخصوصيون'],['enrolls','<i class="fa-solid fa-clipboard-check"></i> التسجيلات'],['requests','<i class="fa-solid fa-circle-info"></i> الطلبات'],['reports','<i class="fa-regular fa-flag"></i> البلاغات'],['complaints','<i class="fa-solid fa-circle-info"></i> الشكاوي'],['tedits','<i class="fa-solid fa-circle-info"></i> تعديلات الخصوصيين'],['edits','<i class="fa-solid fa-circle-info"></i> تعديل التقييم'],['subjreq','<i class="fa-solid fa-circle-info"></i> المواد المطلوبة'],['stats','<i class="fa-solid fa-circle-info"></i> الإحصائيات'],['bcast','<i class="fa-solid fa-circle-info"></i> إشعار عام'],['badwords','<i class="fa-solid fa-circle-info"></i> الكلمات المحظورة'],['terms','<i class="fa-solid fa-circle-info"></i> الشروط'],['backup','<i class="fa-solid fa-circle-info"></i> النسخ الاحتياطي']];
 const tabN=k=>({enrolls:db.enrolls.filter(e=>e.status==='pending').length,tedits:db.tutorEdits.length,requests:db.requests.length,reports:db.reports.length,complaints:db.complaints.filter(c=>c.status==='open').length,edits:db.edits.length,subjreq:db.subjReqs.length}[k]||0);
 const sBtn='px-2 py-1 rounded-lg text-white';
 function renderAdmin(){
@@ -804,12 +850,12 @@ function renderAdmin(){
       <button onclick="saveTutor()" class="btn bg-blue-500">${t?'حفظ التعديل':'إضافة الخصوصي'}</button>${t?'<button onclick="editId=null;renderAdmin()" class="btn bg-slate-500">إلغاء</button>':''}
       <div class="pt-3 border-t border-slate-500/20 space-y-2">${db.adminTutors.map(x=>`<div class="rounded-xl bg-slate-500/10 p-2 space-y-2 text-xs ${x.status==='removed'?'border border-red-500/40 opacity-80':''}">
         <div class="flex items-center gap-2">${avatar(x,32)}<span class="font-bold truncate flex-1 flex items-center gap-1">${esc(x.name)} ${flagOf(x.nationality)} ${vb(x,15)}</span>${x.warnings?`<span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 font-bold">⚠️ ${x.warnings}/3</span>`:''}${x.status==='removed'?'<span class="px-2 py-0.5 rounded-full bg-red-500/20 text-red-500 font-bold">ملغى</span>':''}</div>
-        <div class="flex flex-wrap gap-1.5"><button onclick="toggleVerify('${x.id}',${!x.verified})" class="${sBtn} ${x.verified?'bg-amber-500':'bg-slate-500'}"><i class="bi bi-patch-check-fill"></i> ${x.verified?'موثّق':'توثيق'}</button>
-        <button onclick="warnT('${x.id}')" class="${sBtn} bg-orange-500"><i class="bi bi-triangle-exclamation"></i> إنذار</button>
-        ${x.status!=='removed'?`<button onclick="expelT('${x.id}')" class="${sBtn} bg-rose-700"><i class="bi bi-user-slash"></i> طرد</button>`:''}
-        ${x.status==='removed'?`<button onclick="restoreT('${x.id}')" class="${sBtn} bg-emerald-500"><i class="bi bi-rotate-left"></i> استعادة</button>`:''}
-        <button onclick="editId='${x.id}';AD_IMG='';renderAdmin();scrollTo(0,0)" class="${sBtn} bg-blue-500"><i class="bi bi-pen"></i> تعديل</button>
-        <button onclick="delTutor('${x.id}')" class="${sBtn} bg-red-500"><i class="bi bi-trash"></i></button></div></div>`).join('')}</div>`;
+        <div class="flex flex-wrap gap-1.5"><button onclick="toggleVerify('${x.id}',${!x.verified})" class="${sBtn} ${x.verified?'bg-amber-500':'bg-slate-500'}"><i class="fa-solid fa-certificate"></i> ${x.verified?'موثّق':'توثيق'}</button>
+        <button onclick="warnT('${x.id}')" class="${sBtn} bg-orange-500"><i class="fa-solid fa-circle-info"></i> إنذار</button>
+        ${x.status!=='removed'?`<button onclick="expelT('${x.id}')" class="${sBtn} bg-rose-700"><i class="fa-solid fa-circle-info"></i> طرد</button>`:''}
+        ${x.status==='removed'?`<button onclick="restoreT('${x.id}')" class="${sBtn} bg-emerald-500"><i class="fa-solid fa-circle-info"></i> استعادة</button>`:''}
+        <button onclick="editId='${x.id}';AD_IMG='';renderAdmin();scrollTo(0,0)" class="${sBtn} bg-blue-500"><i class="fa-solid fa-circle-info"></i> تعديل</button>
+        <button onclick="delTutor('${x.id}')" class="${sBtn} bg-red-500"><i class="fa-solid fa-circle-info"></i></button></div></div>`).join('')}</div>`;
     trialMode('ad');
   }else if(tab==='requests'){
     b.innerHTML=`<h3 class="font-bold text-sm">طلبات التسجيل</h3>`+(db.requests.map(r=>`<div class="rounded-2xl border border-amber-500/20 p-3 space-y-1 text-xs"><b>${esc(r.name)} ${flagOf(r.nationality)}</b> <span class="text-slate-400">${esc([r.gender,r.age?r.age+' سنة':''].filter(Boolean).join(' • '))} — ${new Date(r.created_at+'Z').toLocaleDateString('ar')}</span>
@@ -853,17 +899,17 @@ function renderAdmin(){
   }else if(tab==='badwords'){
     b.innerHTML=`<h3 class="font-bold text-sm">الكلمات المحظورة</h3><p class="text-[11px] text-slate-400 leading-relaxed">الفلتر يعمل تلقائياً بقائمة جاهزة على التعليقات والردود والنبذة وطلبات المواد. أضف هنا كلمات إضافية تبي تمنعها.</p>
       <div class="flex gap-2"><input id="bwNew" class="inp" placeholder="كلمة جديدة"><button onclick="addBad()" class="px-4 rounded-xl bg-blue-500 text-white text-xs font-bold shrink-0">إضافة</button></div>
-      <div class="flex flex-wrap gap-1.5">${db.badWords.map(w=>`<span class="px-2.5 py-1 rounded-full bg-red-500/15 text-red-500 text-[11px] font-bold flex items-center gap-1.5">${esc(w)}<button data-w="${esc(w)}" onclick="delBad(this.dataset.w)"><i class="bi bi-x-lg"></i></button></span>`).join('')||'<p class="text-[11px] text-slate-400">لا توجد كلمات مضافة</p>'}</div>`;
+      <div class="flex flex-wrap gap-1.5">${db.badWords.map(w=>`<span class="px-2.5 py-1 rounded-full bg-red-500/15 text-red-500 text-[11px] font-bold flex items-center gap-1.5">${esc(w)}<button data-w="${esc(w)}" onclick="delBad(this.dataset.w)"><i class="fa-solid fa-circle-info"></i></button></span>`).join('')||'<p class="text-[11px] text-slate-400">لا توجد كلمات مضافة</p>'}</div>`;
   }else if(tab==='tedits'){
     const chg=(label,oldV,newV)=>`<div class="rounded-xl bg-slate-500/10 p-2 space-y-1"><p class="font-bold text-slate-400">${label}</p><p class="text-red-400 line-through break-words whitespace-pre-wrap">${esc(oldV||'—')}</p><p class="text-emerald-500 break-words whitespace-pre-wrap">${esc(newV||'—')}</p></div>`;
     const subsTxt=a=>(a||[]).map(x=>`${x.name} — ${x.price} ${SAR} — ${x.targets}${x.trial?' — '+x.trial:''}`).join('\n');
     b.innerHTML=`<h3 class="font-bold text-sm">تعديلات الخصوصيين بانتظار الموافقة</h3>`+(db.tutorEdits.map(e=>{const c=e.changes,o=e.before;
       return `<div class="rounded-2xl border border-blue-500/30 p-3 space-y-2 text-xs"><p><b>${esc(e.name)}</b> <span class="text-slate-400">${new Date(e.created_at+'Z').toLocaleString('ar')}</span></p>
       ${'whatsapp' in c?chg('رقم الواتساب',o.whatsapp,c.whatsapp):''}${'telegram' in c?chg('يوزر التليجرام',o.telegram,c.telegram):''}${'bio' in c?chg('النبذة',o.bio,c.bio):''}${c.subjects?chg('المواد والأسعار',subsTxt(o.subjects),subsTxt(c.subjects)):''}
-      ${c.photo?`<div class="rounded-xl bg-slate-500/10 p-2"><p class="font-bold text-slate-400 mb-1">الصورة</p><div class="flex items-center gap-3">${o.photo?`<img src="${esc(o.photo)}" class="w-14 h-14 rounded-full object-cover opacity-60">`:'<span class="text-slate-400">لا توجد</span>'}<i class="bi bi-arrow-left" style="color:#94a3b8"></i><img src="${esc(c.photo)}" class="w-14 h-14 rounded-full object-cover"></div></div>`:''}
+      ${c.photo?`<div class="rounded-xl bg-slate-500/10 p-2"><p class="font-bold text-slate-400 mb-1">الصورة</p><div class="flex items-center gap-3">${o.photo?`<img src="${esc(o.photo)}" class="w-14 h-14 rounded-full object-cover opacity-60">`:'<span class="text-slate-400">لا توجد</span>'}<i class="fa-solid fa-circle-info" style="color:#94a3b8"></i><img src="${esc(c.photo)}" class="w-14 h-14 rounded-full object-cover"></div></div>`:''}
       <div class="grid grid-cols-2 gap-2 pt-1"><button onclick="approveTE('${e.id}')" class="btn bg-emerald-500">قبول التعديل</button><button onclick="rejectTE('${e.id}')" class="btn bg-red-500">رفض</button></div></div>`}).join('')||'<p class="text-xs text-slate-400 text-center">لا توجد تعديلات بانتظار الموافقة</p>');
   }else if(tab==='subjreq'){
-    b.innerHTML=`<h3 class="font-bold text-sm">المواد التي يطلبها الطلاب</h3><p class="text-[11px] text-slate-400">مواد ما لقى لها الطلاب خصوصي. استخدمها لتعرف من تبحث عنه.</p>`+(db.subjReqs.map(r=>`<div class="rounded-xl bg-slate-500/10 p-3 flex items-center justify-between gap-2 text-xs"><span class="font-bold">${esc(r.subject)}</span><span class="flex items-center gap-2"><b class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-500">${r.n}</b><button data-s="${esc(r.subject)}" onclick="clearSubj(this.dataset.s)" class="${sBtn} bg-slate-500"><i class="bi bi-check"></i></button></span></div>`).join('')||'<p class="text-xs text-slate-400 text-center">لا توجد طلبات</p>');
+    b.innerHTML=`<h3 class="font-bold text-sm">المواد التي يطلبها الطلاب</h3><p class="text-[11px] text-slate-400">مواد ما لقى لها الطلاب خصوصي. استخدمها لتعرف من تبحث عنه.</p>`+(db.subjReqs.map(r=>`<div class="rounded-xl bg-slate-500/10 p-3 flex items-center justify-between gap-2 text-xs"><span class="font-bold">${esc(r.subject)}</span><span class="flex items-center gap-2"><b class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-500">${r.n}</b><button data-s="${esc(r.subject)}" onclick="clearSubj(this.dataset.s)" class="${sBtn} bg-slate-500"><i class="fa-solid fa-check"></i></button></span></div>`).join('')||'<p class="text-xs text-slate-400 text-center">لا توجد طلبات</p>');
   }else if(tab==='stats'){
     b.innerHTML='<p class="text-xs text-slate-400 text-center">جاري التحميل...</p>';
     api('GET','/admin/stats').then(s=>{
@@ -880,13 +926,13 @@ function renderAdmin(){
   }else if(tab==='bcast'){
     b.innerHTML=`<h3 class="font-bold text-sm">إشعار عام</h3><p class="text-[11px] text-slate-400 leading-relaxed">يُرسل رسالة في تليجرام لكل من فتح المنصة قبل ذلك (ولم يحظر البوت). استخدمه بحذر.</p>
       <textarea id="bctext" rows="4" maxlength="1000" class="inp" placeholder="اكتب نص الرسالة"></textarea>
-      <button onclick="sendBroadcast()" class="btn bg-blue-500"><i class="bi bi-paper-plane"></i> إرسال للجميع</button>`;
+      <button onclick="sendBroadcast()" class="btn bg-blue-500"><i class="fa-solid fa-circle-info"></i> إرسال للجميع</button>`;
   }else if(tab==='terms'){
-    b.innerHTML=`<h3 class="font-bold text-sm">الشروط والتعهد</h3><div class="space-y-2">${db.terms.map((x,i)=>`<div class="rounded-xl bg-slate-500/10 p-2 flex gap-2 items-start text-xs"><span class="flex-1">${i+1}. ${esc(x.text)}</span><button onclick="delTerm('${x.id}')" class="px-2 rounded-lg bg-red-500"><i class="bi bi-x-lg"></i></button></div>`).join('')}</div>
+    b.innerHTML=`<h3 class="font-bold text-sm">الشروط والتعهد</h3><div class="space-y-2">${db.terms.map((x,i)=>`<div class="rounded-xl bg-slate-500/10 p-2 flex gap-2 items-start text-xs"><span class="flex-1">${i+1}. ${esc(x.text)}</span><button onclick="delTerm('${x.id}')" class="px-2 rounded-lg bg-red-500"><i class="fa-solid fa-circle-info"></i></button></div>`).join('')}</div>
       <textarea id="newTerm" rows="2" class="inp" placeholder="اكتب شرطاً أو تعهداً جديداً"></textarea><button onclick="addTerm()" class="btn bg-blue-500">+ إضافة</button>`;
   }else{
     b.innerHTML=`<h3 class="font-bold text-sm">نسخة احتياطية</h3><p class="text-[11px] text-slate-400 leading-relaxed">السيرفر يحفظ نسخة تلقائية كل يوم داخل مجلد data/backups (آخر 14 يوم). وتقدر تحمّل نسخة JSON الآن.</p>
-      <button onclick="exportData()" class="btn bg-emerald-500"><i class="bi bi-download"></i> تحميل النسخة (JSON)</button>`;
+      <button onclick="exportData()" class="btn bg-emerald-500"><i class="fa-solid fa-circle-info"></i> تحميل النسخة (JSON)</button>`;
   }
 }
 async function adPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;try{AD_IMG=await resizeImg(f)}catch(e){alert(e.message)}}
@@ -939,13 +985,13 @@ function applyPalette(i){i=Number(i);if(!PALETTES[i])i=0;const [a,b,r]=PALETTES[
 function avgTutorPrice(t){const prices=(t.subjects||[]).map(s=>Number(s.price||s.onsite||0)).filter(n=>Number.isFinite(n)&&n>0);return prices.length?Math.round(prices.reduce((a,b)=>a+b,0)/prices.length):'—'}
 function guideShow(html){$('guidePanel').innerHTML=html;$('guideLayer').classList.remove('hidden')}
 function guideClose(){$('guideLayer').classList.add('hidden')}
-function showPalette(first){const chosen=Number(safeRead('barq_palette_'+userKey())||0);guideShow(`<div class="guideEmoji"><i class="bi bi-palette2"></i></div><h2 class="text-2xl font-black">خلّ المنصة على ذوقك!</h2><p class="text-sm text-slate-500 mt-2">اختر لونك المفضل، وتقدر تغيّره بأي وقت من زر الألوان.</p><div class="paletteGrid">${PALETTES.map((p,i)=>`<button style="background:linear-gradient(135deg,${p[0]},${p[1]})" class="${chosen===i?'selected':''}" onclick="choosePalette(${i},${!!first})" aria-label="اللون ${i+1}"></button>`).join('')}</div><button class="btn" style="background:var(--accent)" onclick="finishPalette(${!!first})">متابعة <i class="bi bi-arrow-left"></i></button>`)}
+function showPalette(first){const chosen=Number(safeRead('barq_palette_'+userKey())||0);guideShow(`<div class="guideEmoji"><i class="fa-solid fa-palette"></i></div><h2 class="text-2xl font-black">خلّ المنصة على ذوقك!</h2><p class="text-sm text-slate-500 mt-2">اختر لونك المفضل، وتقدر تغيّره بأي وقت من زر الألوان.</p><div class="paletteGrid">${PALETTES.map((p,i)=>`<button style="background:linear-gradient(135deg,${p[0]},${p[1]})" class="${chosen===i?'selected':''}" onclick="choosePalette(${i},${!!first})" aria-label="اللون ${i+1}"></button>`).join('')}</div><button class="btn" style="background:var(--accent)" onclick="finishPalette(${!!first})">متابعة <i class="fa-solid fa-circle-info"></i></button>`)}
 function choosePalette(i,first){applyPalette(i);showPalette(first)}
 function finishPalette(first){guideClose();safeStore('barq_palette_seen_'+userKey(),'1');if(first&&!me.tutorId)maybeStudentGuide()}
 const studentSteps=[['compass','أهلاً بك في برق','تصفح الخصوصيين والمواد من الصفحة الرئيسية، أو ابحث باسم الخصوصي أو المادة.'],['sliders','قارن واختر المناسب','افتح بطاقة الخصوصي لمعرفة المواد والأسعار والتقييمات، واستخدم الفلاتر للوصول للأفضل.'],['person-check','سجّل وتابع طلبك','اختر المادة واضغط تسجيل، ثم تابع حالة طلبك من قسم تسجيلاتي.']];
 const tutorSteps=[['person-badge','انضم كخصوصي','هذه الخطوات تساعدك على إضافة ملفك للمنصة وعرض خدماتك للطلاب.'],['person-vcard','أدخل معلوماتك','اكتب اسمك ومعلومات التواصل والتعريف بك بشكل واضح وصحيح.'],['book','حدد المواد والأسعار','أضف المواد التي تشرحها وسعر كل مادة ووسيلة الشرح والفئة المستهدفة.'],['send-check','أرسل طلبك للمراجعة','راجع بياناتك ثم أرسل الطلب للإدارة، وسيظهر ملفك بعد الموافقة.']];
 function startGuide(kind,manual=false){guideKind=kind;guideSteps=kind==='tutor'?tutorSteps:studentSteps;guideIndex=0;renderGuide();}
-function renderGuide(){const [icon,title,desc]=guideSteps[guideIndex];guideShow(`<div class="guideEmoji"><i class="bi bi-${icon}"></i></div><div class="text-xs font-bold" style="color:var(--accent)">الخطوة ${guideIndex+1} من ${guideSteps.length}</div><h2 class="text-2xl font-black mt-3">${title}</h2><p class="text-sm text-slate-500 leading-7 mt-3">${desc}</p><div class="guideDots">${guideSteps.map((_,i)=>`<span class="${i===guideIndex?'active':''}"></span>`).join('')}</div><button class="btn" style="background:var(--accent)" onclick="nextGuide()">${guideIndex===guideSteps.length-1?'ابدأ الآن':'التالي'} <i class="bi bi-arrow-left"></i></button><button class="mt-4 text-xs text-slate-500" onclick="guideClose()">تخطي الإرشادات</button>`)}
+function renderGuide(){const [icon,title,desc]=guideSteps[guideIndex];guideShow(`<div class="guideEmoji"><i class="fa-solid fa-${icon}"></i></div><div class="text-xs font-bold" style="color:var(--accent)">الخطوة ${guideIndex+1} من ${guideSteps.length}</div><h2 class="text-2xl font-black mt-3">${title}</h2><p class="text-sm text-slate-500 leading-7 mt-3">${desc}</p><div class="guideDots">${guideSteps.map((_,i)=>`<span class="${i===guideIndex?'active':''}"></span>`).join('')}</div><button class="btn" style="background:var(--accent)" onclick="nextGuide()">${guideIndex===guideSteps.length-1?'ابدأ الآن':'التالي'} <i class="fa-solid fa-circle-info"></i></button><button class="mt-4 text-xs text-slate-500" onclick="guideClose()">تخطي الإرشادات</button>`)}
 function nextGuide(){if(++guideIndex>=guideSteps.length){guideClose();return}renderGuide()}
 function maybeStudentGuide(){const key='barq_student_guide_'+userKey();const count=Number(safeRead(key)||0);if(count>=2)return;safeStore(key,String(count+1));startGuide('student')}
 function maybeTutorGuide(){const key='barq_tutor_guide_'+userKey();if(safeRead(key))return;safeStore(key,'1');startGuide('tutor')}
